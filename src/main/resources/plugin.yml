@@ -2,7 +2,7 @@ name: Lumistones
 version: 1.0.0
 main: ca.saboor.lumistones.Lumistones
 api-version: '1.21.10'
-softdepend: [floodgate]
+softdepend: [floodgate, Vault]
 author: saboor
 description: Craftable display-entity waystones with native Minecraft dialogs.
 commands:

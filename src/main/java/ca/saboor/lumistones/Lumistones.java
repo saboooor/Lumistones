@@ -62,7 +62,7 @@ public final class Lumistones extends JavaPlugin implements Listener, CommandExe
         var section = data.getConfigurationSection("stones");
         if (section != null) for (String id : section.getKeys(false)) try {
             String root = "stones." + id + ".";
-            Stone stone = new Stone(UUID.fromString(id), UUID.fromString(data.getString(root + "owner")), UUID.fromString(data.getString(root + "world")), data.getInt(root + "x"), data.getInt(root + "y"), data.getInt(root + "z"), data.getString(root + "name", "Waystone"), data.getBoolean(root + "private"), bodyMaterial(data.getString(root + "body-block", "POLISHED_ANDESITE")), Math.max(1, Math.min(16, data.getInt(root + "anchor-height", anchorHeight()))), data.getBoolean(root + "owner-head", false)); stones.put(stone.id(), stone);
+            Stone stone = new Stone(UUID.fromString(id), UUID.fromString(data.getString(root + "owner")), UUID.fromString(data.getString(root + "world")), data.getInt(root + "x"), data.getInt(root + "y"), data.getInt(root + "z"), data.getString(root + "name", "Waystone"), data.getBoolean(root + "private"), bodyMaterial(data.getString(root + "body-block", "POLISHED_ANDESITE")), Math.max(1, Math.min(16, data.getInt(root + "anchor-height", anchorHeight()))), data.getBoolean(root + "owner-head", false), data.getBoolean(root + "public", false)); stones.put(stone.id(), stone);
         } catch (RuntimeException e) { throw new IllegalStateException("Invalid waystone record " + id + "; refusing to overwrite data", e); }
         section = data.getConfigurationSection("discoveries");
         if (section != null) for (String player : section.getKeys(false)) {
@@ -77,7 +77,7 @@ public final class Lumistones extends JavaPlugin implements Listener, CommandExe
             String root = "stones." + stone.id() + ".";
             data.set(root + "owner", stone.owner().toString()); data.set(root + "world", stone.world().toString());
             data.set(root + "x", stone.x()); data.set(root + "y", stone.y()); data.set(root + "z", stone.z());
-            data.set(root + "owner-head", stone.ownerHead()); data.set(root + "anchor-height", stone.anchorHeight()); data.set(root + "body-block", stone.bodyBlock().name()); data.set(root + "name", stone.name()); data.set(root + "private", stone.privateAccess());
+            data.set(root + "public", stone.publicAccess()); data.set(root + "owner-head", stone.ownerHead()); data.set(root + "anchor-height", stone.anchorHeight()); data.set(root + "body-block", stone.bodyBlock().name()); data.set(root + "name", stone.name()); data.set(root + "private", stone.privateAccess());
         }
         discoveries.forEach((player, ids) -> data.set("discoveries." + player, ids.stream().map(UUID::toString).toList()));
         DataFiles.write(this, getDataFolder().toPath().resolve("stones.yml"), data);
@@ -247,17 +247,23 @@ public final class Lumistones extends JavaPlugin implements Listener, CommandExe
         }
     }
     boolean canUse(Player player, Stone stone) { return !stone.privateAccess() || stone.owner().equals(player.getUniqueId()); }
-    boolean known(Player player, Stone stone) { return canUse(player, stone) && discoveries.getOrDefault(player.getUniqueId(), Set.of()).contains(stone.id()); }
+    boolean known(Player player, Stone stone) { return canUse(player, stone) && (stone.publicAccess() && getConfig().getBoolean("waystones.public.enabled", false) || discoveries.getOrDefault(player.getUniqueId(), Set.of()).contains(stone.id())); }
     boolean owner(Player player, Stone stone) { return stone.owner().equals(player.getUniqueId()) || permission(player, "lumistones.admin"); }
     private boolean near(Player player, Stone stone) { return stone.location().getWorld() == player.getWorld() && player.getLocation().distanceSquared(stone.location().add(.5, .5, .5)) <= 36; }
     Session session(Player player, Stone source, boolean scroll) {
         Session session = new Session(UUID.randomUUID(), source == null ? null : source.id(), scroll, source == null && !scroll, System.currentTimeMillis() + 120_000); sessions.put(player.getUniqueId(), session); return session;
     }
-    int cost(Player player, Stone target, boolean scroll) {
-        if (!getConfig().getBoolean("xp.enabled") || scroll && !getConfig().getBoolean("scroll.uses-xp") || player.getGameMode() == GameMode.CREATIVE) return 0;
+    Cost travelCost(Player player, Stone target, boolean scroll) {
+        if (!getConfig().getBoolean("xp.enabled", true) || scroll && !(getConfig().contains("scroll.uses-cost", true) ? getConfig().getBoolean("scroll.uses-cost") : getConfig().getBoolean("scroll.uses-xp")) || player.getGameMode() == GameMode.CREATIVE) return Cost.FREE;
         boolean cross = !target.world().equals(player.getWorld().getUID());
-        return TravelRules.cost(cross ? 0 : player.getLocation().distance(target.location()), cross, getConfig().getDouble("xp.blocks-per-level"), getConfig().getInt("xp.minimum-levels"), getConfig().getInt("xp.maximum-levels"), getConfig().getInt("xp.cross-world-levels"));
+        Cost minimum = Cost.read(getConfig(), "xp.minimum-cost", "xp.minimum-levels", 1);
+        Cost maximum = Cost.read(getConfig(), "xp.maximum-cost", "xp.maximum-levels", 3);
+        if (cross) return Cost.read(getConfig(), "xp.cross-world-cost", "xp.cross-world-levels", 3);
+        double distance = player.getLocation().distance(target.location());
+        return new Cost(TravelRules.cost(distance, false, getConfig().getDouble("xp.blocks-per-level", 1000), minimum.levels(), maximum.levels(), 0),
+                Math.min(maximum.money(), Math.max(Math.min(minimum.money(), maximum.money()), Math.ceil(distance / Math.max(1, getConfig().getDouble("xp.blocks-per-money", 1000))))));
     }
+    Cost publicCost() { return Cost.read(getConfig(), "waystones.public.cost", null, 0); }
     private Session validSession(Player player, String token) {
         Session session = sessions.get(player.getUniqueId());
         return session != null && session.token().toString().equals(token) && session.expires() >= System.currentTimeMillis() ? session : null;
@@ -276,7 +282,7 @@ public final class Lumistones extends JavaPlugin implements Listener, CommandExe
         if (!getConfig().getBoolean("teleport.cross-world") && !target.world().equals(player.getWorld().getUID())) { tell(player, "Cross-world travel is disabled."); return; }
         if (target.location().getWorld() == null) { tell(player, "The destination world is unavailable."); return; }
         if (player.isInsideVehicle() || player.isGliding()) { tell(player, "Dismount and stop gliding before travelling."); return; }
-        if (player.getLevel() < cost(player, target, session.scroll())) { tell(player, "You do not have enough XP levels."); return; }
+        if (!EconomyPayment.affordable(player, travelCost(player, target, session.scroll()))) { tell(player, "You cannot pay this cost. Check your XP, balance, and economy provider."); return; }
         Location start = player.getLocation(); sessions.remove(player.getUniqueId());
         if (getConfig().getLong("teleport.warmup-seconds") > 0) tell(player, "Travelling to " + target.name() + "… Stay still.");
         BukkitTask task = Bukkit.getScheduler().runTaskLater(this, () -> {
@@ -286,8 +292,8 @@ public final class Lumistones extends JavaPlugin implements Listener, CommandExe
             if (!worldEnabled(target.location().getWorld())) { tell(player, "The destination world is disabled."); return; }
             Location destination = safeLanding(target, player);
             if (destination == null) { tell(player, "The destination has no safe landing space."); return; }
-            int cost = cost(player, target, session.scroll());
-            if (player.getLevel() < cost) { tell(player, "You do not have enough XP levels."); return; }
+            Cost cost = travelCost(player, target, session.scroll());
+            if (!EconomyPayment.affordable(player, cost)) { tell(player, "You cannot pay this cost. Check your XP, balance, and economy provider."); return; }
             // Bukkit teleport is cancellable; charge only after it succeeds.
             ItemStack paymentScroll = session.scroll() ? player.getInventory().getItemInMainHand() : null;
             if (TravelPayment.complete(player, destination, cost, paymentScroll)) {
@@ -379,6 +385,15 @@ public final class Lumistones extends JavaPlugin implements Listener, CommandExe
                     model.remove(stone); Stone updated = stone.named(name); stones.put(stone.id(), updated); model.spawn(updated); save();
                 } else if (args[2].equals("travel")) { dialogs.destinations(player, stone, false); return true; }
                 else if (args[2].equals("private")) { Stone updated = stone.visibility(!stone.privateAccess()); stones.put(stone.id(), updated); model.refresh(updated); save(); }
+                else if (args[2].equals("public")) {
+                    if (!stone.publicAccess()) {
+                        if (!getConfig().getBoolean("waystones.public.enabled", false)) { tell(player, "Public waystones are disabled."); return true; }
+                        if (!EconomyPayment.charge(player, publicCost())) { tell(player, "You cannot pay the public waystone cost. Check your XP, balance, and economy provider."); return true; }
+                    }
+                    Stone updated = stone.withPublicAccess(!stone.publicAccess());
+                    stones.put(stone.id(), updated); model.refresh(updated); save();
+                    dialogs.manage(player, updated); return true;
+                }
                 else if (args[2].equals("owner-head")) {
                     Stone updated = stone.withOwnerHead(!stone.ownerHead());
                     model.remove(stone); stones.put(stone.id(), updated); model.spawn(updated); save();
@@ -468,7 +483,7 @@ public final class Lumistones extends JavaPlugin implements Listener, CommandExe
     private void list(CommandSender sender) {
         if (!permission(sender, "lumistones.use")) return;
         for (Stone stone : stones.values().stream().sorted(Comparator.comparing(Stone::name)).toList())
-            if (!(sender instanceof Player player) || known(player, stone)) sender.sendMessage(info(stone.id() + " - " + stone.name() + " (" + (stone.privateAccess() ? "private" : "discoverable") + ")"));
+            if (!(sender instanceof Player player) || known(player, stone)) sender.sendMessage(info(stone.id() + " - " + stone.name() + " (" + (stone.privateAccess() ? "private" : stone.publicAccess() ? "public" : "discoverable") + ")"));
     }
     Stone findStone(String input) {
         List<Stone> matches = stones.values().stream().filter(stone -> stone.id().toString().equalsIgnoreCase(input) || stone.name().equalsIgnoreCase(input)).toList();

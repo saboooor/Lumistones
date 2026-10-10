@@ -5,7 +5,10 @@ import org.bukkit.Material;
 import org.bukkit.Location;
 import java.util.UUID;
 
-record Stone(UUID id, UUID owner, UUID world, int x, int y, int z, String name, boolean privateAccess, Material bodyBlock, int anchorHeight, boolean ownerHead) {
+record Stone(UUID id, UUID owner, UUID world, int x, int y, int z, String name, boolean privateAccess, Material bodyBlock, int anchorHeight, boolean ownerHead, boolean publicAccess) {
+    Stone(UUID id, UUID owner, UUID world, int x, int y, int z, String name, boolean privateAccess, Material bodyBlock, int anchorHeight, boolean ownerHead) {
+        this(id, owner, world, x, y, z, name, privateAccess, bodyBlock, anchorHeight, ownerHead, false);
+    }
     Stone(UUID id, UUID owner, UUID world, int x, int y, int z, String name, boolean privateAccess, Material bodyBlock, int anchorHeight) {
         this(id, owner, world, x, y, z, name, privateAccess, bodyBlock, anchorHeight, false);
     }
@@ -15,9 +18,10 @@ record Stone(UUID id, UUID owner, UUID world, int x, int y, int z, String name, 
     Stone(UUID id, UUID owner, UUID world, int x, int y, int z, String name, boolean privateAccess, Material bodyBlock) {
         this(id, owner, world, x, y, z, name, privateAccess, bodyBlock, 2);
     }
-    Stone material(Material block) { return new Stone(id, owner, world, x, y, z, name, privateAccess, block, anchorHeight, ownerHead); }
-    Stone withOwnerHead(boolean enabled) { return new Stone(id, owner, world, x, y, z, name, privateAccess, bodyBlock, anchorHeight, enabled); }
+    Stone material(Material block) { return new Stone(id, owner, world, x, y, z, name, privateAccess, block, anchorHeight, ownerHead, publicAccess); }
+    Stone withOwnerHead(boolean enabled) { return new Stone(id, owner, world, x, y, z, name, privateAccess, bodyBlock, anchorHeight, enabled, publicAccess); }
     Location location() { return new Location(Bukkit.getWorld(world), x, y, z); }
-    Stone named(String name) { return new Stone(id, owner, world, x, y, z, name, privateAccess, bodyBlock, anchorHeight, ownerHead); }
-    Stone visibility(boolean privateAccess) { return new Stone(id, owner, world, x, y, z, name, privateAccess, bodyBlock, anchorHeight, ownerHead); }
+    Stone named(String name) { return new Stone(id, owner, world, x, y, z, name, privateAccess, bodyBlock, anchorHeight, ownerHead, publicAccess); }
+    Stone visibility(boolean privateAccess) { return new Stone(id, owner, world, x, y, z, name, privateAccess, bodyBlock, anchorHeight, ownerHead, publicAccess && !privateAccess); }
+    Stone withPublicAccess(boolean enabled) { return new Stone(id, owner, world, x, y, z, name, enabled ? false : privateAccess, bodyBlock, anchorHeight, ownerHead, enabled); }
 }

@@ -1,6 +1,6 @@
 # Lumistones
 
-Paper waystones with craftable items, display-entity monuments, per-player discovery, XP costs, warp scrolls, and native Minecraft dialogs. Includes owner-controlled private access, Bedrock forms, command travel, configurable crafting and spacing, and flight zones.
+Paper waystones with craftable items, display-entity monuments, per-player discovery, XP and money costs, warp scrolls, and native Minecraft dialogs. Includes owner-controlled private access, Bedrock forms, command travel, configurable crafting and spacing, and flight zones.
 
 ## Install and build
 
@@ -22,7 +22,7 @@ OOO
 
 Place it on solid ground with three empty blocks above that ground. New stones receive a random fantasy name. The name/management dialog opens after placement, letting you rename them. Naturally generated stones use the same naming system; existing saved names are preserved. New stones must be at least **64 blocks apart** within the same world; set `minimum-distance-blocks: 0` to disable spacing. Existing stones are not moved by a spacing change.
 
-Right-click a stone to activate it for your player and open the teleport menu. Destination buttons show the world and XP cost in levels. Every player, including the owner and administrators, must visit and click a stone before it appears as a destination. Private stones can only be activated and used by their owner; other players cannot click or travel to them, even if they activated them earlier. Owners can toggle private access in the manage dialog or with `/lumistones private <id> <true|false>`. Administrators retain management permissions but cannot travel through another player’s private stone. Turning private access off restores access for players who previously activated it.
+Right-click a stone to activate it for your player and open the teleport menu. Destination buttons show the world and travel cost. Discoverable stones require every player, including the owner and administrators, to visit and click them before they appear as destinations. Public stones appear for everyone without activation. Private stones can only be activated and used by their owner; other players cannot click or travel to them, even if they activated them earlier. Owners can toggle private access in the manage dialog or with `/lumistones private <id> <true|false>`. Administrators retain management permissions but cannot travel through another player’s private stone. Turning private access off restores access for players who previously activated it.
 
 Sneak-right-click your stone to rename it, change private access, travel, or retrieve it. `require-sneak-to-manage: false` opens management on a normal click for owners. Administrators can manage anyone's stones. Break the polished tuff wall at the base to retrieve the stone, or use `/lumistones remove <id>`. Only owners and administrators can retrieve stones, and protection plugins can cancel breaking. Mining drops one waystone item at the base; command retrieval adds it to your inventory, dropping overflow nearby. Both remove the stone's discovery records. Replacing it creates a fresh stone.
 
@@ -64,12 +64,12 @@ ID/name resolution accepts full UUIDs, unique UUID prefixes, and unique names. A
 
 | Setting | Default | Effect |
 | --- | --- | --- |
-| `xp.enabled` | `true` | Enable or disable all XP costs |
+| `xp.enabled` | `true` | Enable or disable travel costs |
 | `xp.blocks-per-level` | `1000` | Distance per XP level, rounded up |
-| `xp.minimum-levels` / `xp.maximum-levels` | `1` / `3` | Same-world cost bounds |
-| `xp.cross-world-levels` | `3` | Flat cross-world cost |
+| `xp.minimum-cost` / `xp.maximum-cost` | `{levels: 1}` / `{levels: 3}` | Same-world bounds for each currency |
+| `xp.cross-world-cost` | `{levels: 3}` | Flat cross-world cost |
 | `scroll.enabled` | `true` | Enable/disable scroll recipe and existing scroll usage |
-| `scroll.uses-xp` | `false` | Charge XP for scrolls when XP is enabled |
+| `scroll.uses-cost` | `false` | Charge travel costs for scrolls when costs are enabled |
 | `teleport.command-travel` | `false` | Allow menu/command travel from anywhere |
 | `teleport.cross-world` | `true` | Permit travel between worlds |
 | `teleport.cooldown-seconds` | `5` | Recharge after successful travel |
@@ -86,7 +86,31 @@ ID/name resolution accepts full UUIDs, unique UUID prefixes, and unique names. A
 | `model.custom-model-data` | `0` | Zero uses built-in monument; positive values use your resource-pack item model |
 | `model.item-material` | `AMETHYST_SHARD` | Material for the optional item model |
 
-XP costs are **levels**, preserve progress toward the next level, and are charged only after successful travel. Creative travel is free.
+Enable `waystones.public.enabled` (default `false`) to show **Make public** in the manage menu. `waystones.public.cost` defaults to `{levels: 3, money: 0}` and is charged each time a stone becomes public. Making it discoverable again is free. Public and private access are mutually exclusive. Disabling public waystones restores activation requirements without deleting their saved public setting.
+
+Every cost section accepts `levels`, `money`, or both; omitted currencies are free. Money requires [Vault](https://github.com/MilkBowl/VaultAPI/blob/master/src/main/java/net/milkbowl/vault/economy/Economy.java) and an economy provider; unavailable or failed payments block the action. Same-world money costs use `xp.blocks-per-money` (default `1000`) and the money minimum/maximum. For example:
+
+```yaml
+xp:
+  minimum-cost:
+    levels: 1
+    money: 10
+  maximum-cost:
+    levels: 3
+    money: 100
+  cross-world-cost:
+    money: 50
+waystones:
+  public:
+    enabled: true
+    cost:
+      levels: 5
+      money: 250
+```
+
+Legacy `minimum-levels`, `maximum-levels`, `cross-world-levels`, and `scroll.uses-xp` remain supported when their replacement is absent. `xp.enabled` controls travel costs; the public conversion cost is independent.
+
+XP costs are **levels**, preserve progress toward the next level, and are retained only for successful travel. Creative travel is free.
 
 For example, a custom crafting recipe can be configured as:
 

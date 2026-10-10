@@ -37,11 +37,17 @@ final class Dialogs {
         for (Stone target : plugin.stones.values().stream().sorted(Comparator.comparing(Stone::name)).toList()) {
             if (!plugin.known(player, target) || !plugin.worldEnabled(target.location().getWorld()) || source != null && source.id().equals(target.id())) continue;
             if (!plugin.getConfig().getBoolean("teleport.cross-world") && !target.world().equals(player.getWorld().getUID())) continue;
-            actions.add(new ActionButton(destinationLabel(plugin.getConfig(), target.name(), target.location().getWorld().getName(), plugin.cost(player, target, scroll)),
+            actions.add(new ActionButton(destinationLabel(plugin.getConfig(), target.name(), target.location().getWorld().getName(), plugin.travelCost(player, target, scroll)),
                     new Action("/lumistones choose " + session.token() + " " + target.id(), false), 300, Icon.TRAVEL));
         }
         if (actions.isEmpty()) actions.add(button("No other activated waystones", "/lumistones close", false));
         plugin.showDialog(player, menu(base, actions));
+    }
+    static TextComponent destinationLabel(org.bukkit.configuration.Configuration config, String name, String world, Cost cost) {
+        TextComponent levels = destinationLabel(config, name, world, cost.levels());
+        if (cost.money() == 0) return levels;
+        String suffix = cost.label();
+        return new TextComponent(levels.toPlainText() + suffix, null, levels.paperText().append(Component.text(suffix)));
     }
     static TextComponent destinationLabel(org.bukkit.configuration.Configuration config, String name, String world, int cost) {
         String alias = worldAlias(config, world);
@@ -82,11 +88,13 @@ final class Dialogs {
     }
     void manage(Player player, Stone stone) {
         var session = plugin.session(player, stone, false);
-        DialogBase base = base("Manage " + stone.name(), "Rename your waystone. Break either wall block to retrieve it. Close saves the name. Private stones can only be activated and used by their owner. Other stones require each player to visit and activate them.");
+        DialogBase base = base("Manage " + stone.name(), "Rename your waystone. Break either wall block to retrieve it. Close saves the name. Private stones can only be activated and used by their owner. Public stones are available to everyone without activation. Other stones require each player to visit and activate them.");
         base.inputs(List.of(new TextInput("name", new TextComponent("Name")).initial(stone.name()).maxLength(32)));
         List<ActionButton> actions = new ArrayList<>(); String prefix = "/lumistones edit " + session.token() + " ";
         actions.add(button("Travel", prefix + "travel", false, Icon.TRAVEL));
         actions.add(button(stone.privateAccess() ? "Allow other players" : "Make private", prefix + "private", false, stone.privateAccess() ? Icon.SHARED : Icon.PRIVATE));
+        if (plugin.getConfig().getBoolean("waystones.public.enabled", false) || stone.publicAccess())
+            actions.add(button(stone.publicAccess() ? "Make discoverable" : "Make public · " + plugin.publicCost().label(), prefix + "public", false, Icon.SHARED));
         if (!stone.owner().equals(new UUID(0, 0)))
             actions.add(button(stone.ownerHead() ? "Hide owner head" : "Show owner head", prefix + "owner-head", false, Icon.OWNER));
         plugin.showDialog(player, editingMenu(base, actions, prefix));

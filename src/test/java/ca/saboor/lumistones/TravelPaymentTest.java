@@ -10,6 +10,19 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class TravelPaymentTest {
+    @Test void structuredCostDoesNotChargeLevelsWhenTeleportCancelled() {
+        Player player = mock(Player.class);
+        when(player.getLevel()).thenReturn(5);
+        assertFalse(TravelPayment.complete(player, new Location(null, 1, 2, 3), new Cost(2, 0), null));
+        verify(player, never()).giveExpLevels(anyInt());
+    }
+    @Test void unavailableMoneyProviderDoesNotChargeLevelsOrTeleport() {
+        Player player = mock(Player.class);
+        when(player.getLevel()).thenReturn(5);
+        assertFalse(TravelPayment.complete(player, new Location(null, 1, 2, 3), new Cost(2, 10), null));
+        verify(player, never()).giveExpLevels(anyInt());
+        verify(player, never()).teleport(any(Location.class), any(PlayerTeleportEvent.TeleportCause.class));
+    }
     @Test void deniedTeleportDoesNotChargeExperienceOrConsumeScroll() {
         Player player = mock(Player.class); ItemStack scroll = mock(ItemStack.class); Location destination = new Location(null, 1, 2, 3);
         when(player.teleport(destination, PlayerTeleportEvent.TeleportCause.PLUGIN)).thenReturn(false);

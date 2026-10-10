@@ -1,10 +1,15 @@
-# Paper 1.21.10+, Java 21. All costs are experience LEVELS.
+# Paper 1.21.10+, Java 21. Costs accept levels, money, or both.
+# Money requires Vault and an economy provider. Omitted currencies cost zero.
 xp:
   enabled: true
   blocks-per-level: 1000
-  minimum-levels: 1
-  maximum-levels: 3
-  cross-world-levels: 3
+  blocks-per-money: 1000
+  minimum-cost:
+    levels: 1
+  maximum-cost:
+    levels: 3
+  cross-world-cost:
+    levels: 3
 # Only listed world folder names allow waystone placement and use.
 # Each entry also defines its teleport-menu name and sprite.
 enabled-worlds:
@@ -21,7 +26,7 @@ enabled-worlds:
     sprite: minecraft:item/ender_eye
 scroll:
   enabled: true
-  uses-xp: false
+  uses-cost: false
 teleport:
   # Enable /lumistones and /lumistones tp travel from anywhere.
   command-travel: false
@@ -35,6 +40,12 @@ waystones:
   # Number of stacked breakable wall blocks; 1–16. Applies to new stones.
   anchor-height: 2
   private-by-default: false
+  public:
+    enabled: false
+    # Charged each time a discoverable/private stone is made public.
+    cost:
+      levels: 3
+      money: 0
 # One chance per structure in terrain generated while Lumistones is installed.
 natural-generation:
   enabled: true

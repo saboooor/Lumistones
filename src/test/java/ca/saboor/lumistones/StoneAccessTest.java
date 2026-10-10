@@ -16,6 +16,18 @@ class StoneAccessTest {
         when(player.getUniqueId()).thenReturn(visitor);
         var field = Lumistones.class.getDeclaredField("discoveries"); field.setAccessible(true); field.set(plugin, discoveries);
     }
+    @Test void publicStoneBypassesDiscoveryOnlyWhenEnabled() {
+        var config = new org.bukkit.configuration.file.YamlConfiguration();
+        doReturn(config).when(plugin).getConfig();
+        Stone shared = stone.visibility(true).withPublicAccess(true);
+        assertFalse(shared.privateAccess());
+        assertFalse(plugin.known(player, shared));
+        config.set("waystones.public.enabled", true);
+        assertTrue(plugin.known(player, shared));
+        assertFalse(plugin.known(player, shared.visibility(true)));
+        assertTrue(shared.named("New").material(org.bukkit.Material.BRICKS).withOwnerHead(true).publicAccess());
+        assertFalse(shared.visibility(true).publicAccess());
+    }
     @Test void ownerHeadIsPerStoneAndSurvivesOtherEdits() {
         assertFalse(stone.ownerHead());
         Stone enabled = stone.withOwnerHead(true).named("Renamed").visibility(true).material(org.bukkit.Material.BRICKS);
