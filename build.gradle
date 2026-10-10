@@ -1,0 +1,48 @@
+plugins {
+    id 'java'
+}
+
+group = 'ca.saboor'
+version = '1.0.0'
+
+repositories {
+    mavenCentral()
+    maven { url = 'https://repo.papermc.io/repository/maven-public/' }
+    maven { url = 'https://repo.opencollab.dev/maven-releases/' }
+}
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(21)
+}
+
+configurations {
+    mockitoAgent
+}
+
+dependencies {
+    compileOnly 'io.papermc.paper:paper-api:1.21.10-R0.1-SNAPSHOT'
+    testImplementation 'io.papermc.paper:paper-api:1.21.10-R0.1-SNAPSHOT'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.11.4'
+    testImplementation 'org.mockito:mockito-core:5.15.2'
+    mockitoAgent('org.mockito:mockito-core:5.15.2') { transitive = false }
+    testImplementation('org.geysermc.cumulus:cumulus:1.1.2') {
+        exclude group: 'org.checkerframework', module: 'checker-qual'
+        exclude group: 'com.google.code.gson', module: 'gson'
+        exclude group: 'com.google.guava', module: 'guava'
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 21
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+    doFirst { jvmArgs "-javaagent:${configurations.mockitoAgent.singleFile}" }
+}
+
+tasks.named('jar') {
+    archiveBaseName = 'Lumistones'
+}

@@ -1,0 +1,68 @@
+# Paper 1.21.10+, Java 21. All costs are experience LEVELS.
+xp:
+  enabled: true
+  blocks-per-level: 1000
+  minimum-levels: 1
+  maximum-levels: 3
+  cross-world-levels: 3
+scroll:
+  enabled: true
+  uses-xp: false
+teleport:
+  # Enable /lumistones and /lumistones tp travel from anywhere.
+  command-travel: false
+  cross-world: true
+  cooldown-seconds: 5
+  warmup-seconds: 2
+# Private stones can only be activated and used by their owner.
+waystones:
+  # Enchantment shimmer on crafted/given/retrieved Lumistone items.
+  item-glint: true
+  # Number of stacked breakable wall blocks; 1–16. Applies to new stones.
+  anchor-height: 2
+  private-by-default: false
+# One chance per structure in terrain generated while Lumistones is installed.
+natural-generation:
+  enabled: true
+  # Empty means all worlds; otherwise use world folder names.
+  worlds: []
+  # Percentages (0 disables, 100 always attempts). Add any vanilla/datapack structure key.
+  structures:
+    minecraft:village_plains: 25
+    minecraft:village_desert: 25
+    minecraft:village_savanna: 25
+    minecraft:village_snowy: 25
+    minecraft:village_taiga: 25
+    minecraft:desert_pyramid: 15
+    minecraft:jungle_pyramid: 15
+    minecraft:pillager_outpost: 10
+    minecraft:ancient_city: 10
+    minecraft:end_city: 10
+model:
+  # Native parts are editable in model.yml. Optional resource-pack model overrides its parts.
+  custom-model-data: 0
+  item-material: AMETHYST_SHARD
+# Placement, crafting, and interaction settings.
+waystone-material: LODESTONE
+minimum-distance-blocks: 64
+require-sneak-to-manage: true
+teleport-sound: ENTITY_ENDERMAN_TELEPORT
+recipe:
+  enabled: true
+  shape: [" S ", "SES", "OOO"]
+  ingredients:
+    S: STONE_BRICKS
+    E: ENDER_PEARL
+    O: OBSIDIAN
+flight-zone:
+  material: SEA_LANTERN
+  default-width: 32
+  default-height: 32
+  max-width: 256
+  max-height: 320
+  check-interval-ticks: 10
+  fall-damage-grace-seconds: 5
+  announce: true
+give-amount: 1
+messages:
+  prefix: '&d[Lumistones] &7'

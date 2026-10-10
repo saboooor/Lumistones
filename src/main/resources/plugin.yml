@@ -1,0 +1,26 @@
+name: Lumistones
+version: 1.0.0
+main: ca.saboor.lumistones.Lumistones
+api-version: '1.21.10'
+softdepend: [floodgate]
+author: saboor
+description: Craftable display-entity waystones with native Minecraft dialogs.
+commands:
+  lumistones:
+    description: Lumistones help and administration
+    aliases: [lumistone, ls]
+permissions:
+  lumistones.use:
+    default: true
+  lumistones.place:
+    default: true
+  lumistones.admin:
+    default: op
+  lumistones.give:
+    default: op
+  lumistones.reload:
+    default: op
+  lumistones.flightzone.admin:
+    default: op
+  lumistones.flightzone.fly:
+    default: true
