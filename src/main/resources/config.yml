@@ -5,6 +5,20 @@ xp:
   minimum-levels: 1
   maximum-levels: 3
   cross-world-levels: 3
+# Only listed world folder names allow waystone placement and use.
+# Each entry also defines its teleport-menu name and sprite.
+enabled-worlds:
+  # Sprites use the blocks atlas on 1.21.10 and items atlas on 1.21.11+.
+  # An empty sprite disables the icon.
+  world:
+    name: Overworld
+    sprite: minecraft:item/compass_16
+  world_nether:
+    name: Nether
+    sprite: minecraft:item/nether_star
+  world_the_end:
+    name: The End
+    sprite: minecraft:item/ender_eye
 scroll:
   enabled: true
   uses-xp: false
@@ -12,8 +26,8 @@ teleport:
   # Enable /lumistones and /lumistones tp travel from anywhere.
   command-travel: false
   cross-world: true
-  cooldown-seconds: 5
-  warmup-seconds: 2
+  cooldown-seconds: 0
+  warmup-seconds: 0
 # Private stones can only be activated and used by their owner.
 waystones:
   # Enchantment shimmer on crafted/given/retrieved Lumistone items.
@@ -38,10 +52,19 @@ natural-generation:
     minecraft:pillager_outpost: 10
     minecraft:ancient_city: 10
     minecraft:end_city: 10
+effects:
+  enchantment-particles: true
+  teleport-particles: true
+  teleport-title: true
 model:
   # Native parts are editable in model.yml. Optional resource-pack model overrides its parts.
   custom-model-data: 0
   item-material: AMETHYST_SHARD
+  # Visibility is toggled separately in each waystone's settings menu.
+  owner-head:
+    # Height above the waystone's base and display scale.
+    height: 2.5
+    scale: 0.75
 # Placement, crafting, and interaction settings.
 waystone-material: LODESTONE
 minimum-distance-blocks: 64

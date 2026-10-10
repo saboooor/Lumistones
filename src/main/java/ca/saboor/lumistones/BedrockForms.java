@@ -46,7 +46,7 @@ final class BedrockForms {
                 StringBuilder content = new StringBuilder();
                 if (dialog.getBase().body() != null) for (var body : dialog.getBase().body()) if (body instanceof PlainMessageBody message) content.append(message.contents().toPlainText()).append('\n');
                 builderClass.getMethod("content", String.class).invoke(builder, content.toString());
-                for (ActionButton button : buttons) builderClass.getMethod("button", String.class).invoke(builder, button.label().toPlainText());
+                for (ActionButton button : buttons) builderClass.getMethod("button", String.class).invoke(builder, buttonLabel(button));
             } else {
                 for (Input input : inputs) {
                     if (input instanceof TextInput text) builderClass.getMethod("input", String.class, String.class, String.class).invoke(builder, text.label().toPlainText(), "", text.initial() == null ? "" : text.initial());
@@ -54,7 +54,7 @@ final class BedrockForms {
                     else if (input instanceof NumberRangeInput number) builderClass.getMethod("slider", String.class, float.class, float.class, float.class, float.class).invoke(builder, number.label().toPlainText(), number.start(), number.end(), number.step() == null ? 1f : number.step(), number.initial() == null ? number.start() : number.initial());
                     else throw new IllegalArgumentException("Unsupported form input " + input.getClass().getSimpleName());
                 }
-                builderClass.getMethod("dropdown", String.class, List.class, int.class).invoke(builder, "Action", buttons.stream().map(button -> button.label().toPlainText()).toList(), 0);
+                builderClass.getMethod("dropdown", String.class, List.class, int.class).invoke(builder, "Action", buttons.stream().map(button -> buttonLabel(button)).toList(), 0);
             }
             Consumer<Object> callback = response -> {
                 try {
@@ -80,6 +80,9 @@ final class BedrockForms {
         } catch (ReflectiveOperationException | LinkageError | RuntimeException e) {
             plugin.getLogger().warning("Could not send Bedrock form: " + e.getMessage()); fallback(player);
         }
+    }
+    static String buttonLabel(ActionButton button) {
+        return button.label().toPlainText() + (button.label().xpLevels() == null ? "" : button.label().xpLevels() + " XP");
     }
     static String command(Action action, Map<String, String> values) {
         if (action == null) return null;

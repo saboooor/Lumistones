@@ -13,11 +13,14 @@ import java.util.*;
 
 /** Shared menu description for Paper dialogs and Floodgate forms. */
 final class DialogView {
-    record TextComponent(String toPlainText) {}
+    record TextComponent(String toPlainText, Integer xpLevels, Component paperText) {
+        TextComponent(String text) { this(text, null, null); }
+        TextComponent(String text, Integer xpLevels) { this(text, xpLevels, null); }
+    }
     record PlainMessageBody(TextComponent contents, int width) {}
     record Action(String command, boolean dynamic) {}
     enum Icon {
-        TRAVEL("item/ender_pearl"), SAVE("item/feather"), RETRIEVE("item/iron_pickaxe"),
+        OWNER("item/name_tag"), TRAVEL("item/ender_pearl"), SAVE("item/feather"), RETRIEVE("item/iron_pickaxe"),
         SHARED("item/emerald"), PRIVATE("item/iron_door"), CLOSE("item/barrier"), INFO("item/paper");
         final String sprite;
         Icon(String sprite) { this.sprite = sprite; }
@@ -78,10 +81,25 @@ final class DialogView {
         if (value instanceof BooleanInput bool) return DialogInput.bool(bool.key(), Component.text(bool.label().toPlainText()), bool.initial(), "true", "false");
         throw new IllegalArgumentException("Unsupported dialog input");
     }
+    static Key spriteAtlas() {
+        // Item textures moved out of the blocks atlas in 1.21.11.
+        String version = org.bukkit.Bukkit.getServer() == null ? "1.21.10" : org.bukkit.Bukkit.getMinecraftVersion();
+        return spriteAtlas(version);
+    }
+    static Key spriteAtlas(String version) {
+        String[] parts = version.split("\\.");
+        boolean separate = Integer.parseInt(parts[0]) > 1 || parts.length > 2 && Integer.parseInt(parts[1]) == 21 && Integer.parseInt(parts[2]) >= 11
+                || Integer.parseInt(parts[1]) > 21;
+        return Key.key(separate ? "minecraft:items" : "minecraft:blocks");
+    }
     static Component buttonLabel(ActionButton value) {
-        Component text = Component.text(value.label().toPlainText());
+        Component text = value.label().paperText() == null ? Component.text(value.label().toPlainText()) : value.label().paperText();
+        if (value.label().xpLevels() != null) {
+            text = text.append(Component.object(ObjectContents.sprite(spriteAtlas(), Key.key("minecraft:item/experience_bottle"))))
+                    .append(Component.text(" " + value.label().xpLevels()));
+        }
         if (value.icon() == null) return text;
-        return Component.object(ObjectContents.sprite(Key.key("minecraft:items"), Key.key("minecraft:" + value.icon().sprite)))
+        return Component.object(ObjectContents.sprite(spriteAtlas(), Key.key("minecraft:" + value.icon().sprite)))
                 .append(Component.text(" ")).append(text);
     }
     static io.papermc.paper.registry.data.dialog.ActionButton button(ActionButton value) {

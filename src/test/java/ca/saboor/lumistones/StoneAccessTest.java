@@ -16,6 +16,14 @@ class StoneAccessTest {
         when(player.getUniqueId()).thenReturn(visitor);
         var field = Lumistones.class.getDeclaredField("discoveries"); field.setAccessible(true); field.set(plugin, discoveries);
     }
+    @Test void ownerHeadIsPerStoneAndSurvivesOtherEdits() {
+        assertFalse(stone.ownerHead());
+        Stone enabled = stone.withOwnerHead(true).named("Renamed").visibility(true).material(org.bukkit.Material.BRICKS);
+        assertTrue(enabled.ownerHead());
+        assertFalse(stone.ownerHead());
+        assertEquals(stone.owner(), enabled.owner());
+        assertFalse(enabled.withOwnerHead(false).ownerHead());
+    }
     @Test void bodyMaterialSurvivesOtherOwnerEdits() {
         assertEquals(org.bukkit.Material.POLISHED_ANDESITE, stone.bodyBlock());
         var updated = stone.material(org.bukkit.Material.BRICKS).named("New name").visibility(true);

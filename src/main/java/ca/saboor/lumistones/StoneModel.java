@@ -3,6 +3,7 @@ package ca.saboor.lumistones;
 import org.bukkit.*;
 import org.bukkit.entity.*;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.joml.Matrix4f;
 import java.util.*;
@@ -71,15 +72,37 @@ final class StoneModel {
             Material material = Material.matchMaterial(plugin.getConfig().getString("model.item-material", "AMETHYST_SHARD"));
             if (material == null || !material.isItem() || material.isAir()) material = Material.AMETHYST_SHARD;
             ItemStack item = new ItemStack(material);
-            var meta = item.getItemMeta(); meta.setCustomModelData(custom); item.setItemMeta(meta);
+            var meta = item.getItemMeta(); var data = meta.getCustomModelDataComponent(); data.setFloats(List.of((float)custom)); meta.setCustomModelDataComponent(data); item.setItemMeta(meta);
             display.setItemStack(item); display.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.FIXED); tag(display, stone);
         } else {
             for (var part : settings.parts()) {
                 spawnPart(stone, base, part);
                 if (settings.runesEnabled() && part.id().equals("pillar")) spawnRunes(stone, base, part);
-                if (settings.labelEnabled() && part.id().equals("rim")) spawnSides(stone, base, part, ChatColor.LIGHT_PURPLE + stone.name(), true);
+                if (settings.labelEnabled() && part.id().equals("rim")) spawnSides(stone, base, part, "\u00a7d" + stone.name(), true);
             }
         }
+        spawnOwnerHead(stone, base);
+    }
+    private void spawnOwnerHead(Stone stone, Location base) {
+        if (!stone.ownerHead() || stone.owner().equals(new UUID(0, 0))) return;
+        double height = plugin.getConfig().getDouble("model.owner-head.height", 2.5);
+        double scale = plugin.getConfig().getDouble("model.owner-head.scale", .75);
+        if (!Double.isFinite(height) || Math.abs(height) > 360 || !Double.isFinite(scale) || scale <= 0 || scale > 16) {
+            plugin.getLogger().warning("Invalid model.owner-head height or scale; skipping owner head.");
+            return;
+        }
+        ItemStack head = new ItemStack(Material.PLAYER_HEAD);
+        SkullMeta meta = (SkullMeta) head.getItemMeta();
+        meta.setOwningPlayer(Bukkit.getOfflinePlayer(stone.owner()));
+        head.setItemMeta(meta);
+        base.getWorld().spawn(base.clone().add(0, height, 0), ItemDisplay.class, display -> {
+            display.setItemStack(head);
+            display.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.FIXED);
+            display.setBillboard(Display.Billboard.VERTICAL);
+            display.setTransformationMatrix(new Matrix4f().scale((float)scale));
+            display.setShadowRadius(0);
+            tag(display, stone);
+        });
     }
     private TextDisplay overlay(Stone stone, Location location) {
         // Default visibility is set before insertion/tracking, preventing a first-packet flash.
@@ -105,7 +128,7 @@ final class StoneModel {
             for (Player player : Bukkit.getOnlinePlayers()) updateVisibility(plugin, player, stone, entity);
     }
     private void spawnRunes(Stone stone, Location base, ModelSettings.Part pillar) {
-        spawnSides(stone, base, pillar, ChatColor.translateAlternateColorCodes('&', settings.runeText()), false);
+        spawnSides(stone, base, pillar, TextStyles.legacy(settings.runeText()), false);
     }
     static float nameScale(ModelSettings.Part rim, String name, float requested, boolean xFace) {
         float width = xFace ? rim.scale().z() : rim.scale().x();
@@ -121,13 +144,13 @@ final class StoneModel {
         for (float[] face : faces) {
             var point = rotation.transformPosition(new org.joml.Vector3f(face[0], face[1], face[2])).add(p.x(), p.y(), p.z());
             TextDisplay text = overlay(stone, base);
-            text.setText(inscription); text.setLineWidth(2048);
+            text.text(TextStyles.component(inscription)); text.setLineWidth(2048);
             if (name) text.setViewRange(settings.labelRange());
             text.setBillboard(Display.Billboard.FIXED); text.setAlignment(TextDisplay.TextAlignment.CENTER);
             text.setDefaultBackground(false); text.setBackgroundColor(Color.fromARGB(0)); text.setShadowed(false);
             text.setSeeThrough(false); text.setBrightness(new Display.Brightness(15, 15));
             // Center the inscription vertically around the middle of the pillar.
-            float lines = Math.max(1, ChatColor.stripColor(inscription).split("\\n", -1).length);
+            float lines = Math.max(1, TextStyles.plain(inscription).split("\\n", -1).length);
             float scale = name ? nameScale(pillar, stone.name(), settings.labelScale(), Math.abs(face[3]) == 90) : settings.runeScale();
             text.setTransformationMatrix(new Matrix4f().translation(point).mul(rotation)
                     .rotateY((float)Math.toRadians(face[3])).scale(scale)
@@ -141,7 +164,7 @@ final class StoneModel {
             ItemDisplay item = base.getWorld().spawn(base, ItemDisplay.class);
             ItemStack stack = new ItemStack(part.bodyBlock() ? stone.bodyBlock() : part.material());
             if (part.customModelData() > 0) {
-                var meta = stack.getItemMeta(); meta.setCustomModelData(part.customModelData()); stack.setItemMeta(meta);
+                var meta = stack.getItemMeta(); var data = meta.getCustomModelDataComponent(); data.setFloats(List.of((float)part.customModelData())); meta.setCustomModelDataComponent(data); stack.setItemMeta(meta);
             }
             item.setItemStack(stack); item.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.FIXED);
             display = item;

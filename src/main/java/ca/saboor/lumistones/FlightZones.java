@@ -386,8 +386,8 @@ final class FlightZones implements Listener {
     ItemStack createItem(int amount) {
         ItemStack item = new ItemStack(material, Math.max(1, Math.min(64, amount)));
         ItemMeta meta = item.getItemMeta();
-        meta.setDisplayName(org.bukkit.ChatColor.AQUA + "Flight Zone");
-        meta.setLore(List.of("Place to create a flight build plot.", "Right-click after placing to set the size."));
+        meta.displayName(TextStyles.component("\u00a7bFlight Zone"));
+        meta.lore(List.of("Place to create a flight build plot.", "Right-click after placing to set the size.").stream().map(net.kyori.adventure.text.Component::text).toList());
         meta.getPersistentDataContainer().set(itemKey, PersistentDataType.BYTE, (byte) 1);
         item.setItemMeta(meta);
         return item;

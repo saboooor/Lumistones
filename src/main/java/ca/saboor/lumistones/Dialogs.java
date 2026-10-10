@@ -3,6 +3,9 @@ package ca.saboor.lumistones;
 import ca.saboor.lumistones.DialogView.*;
 
 import org.bukkit.entity.Player;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.key.Key;
+import net.kyori.adventure.text.object.ObjectContents;
 import java.util.*;
 
 final class Dialogs {
@@ -27,16 +30,55 @@ final class Dialogs {
                 button("Close", prefix + "rename $(name)", true, Icon.CLOSE));
     }
     void destinations(Player player, Stone source, boolean scroll) {
+        if (!plugin.worldEnabled(player.getWorld())) { player.sendMessage(plugin.error("Waystones are disabled in this world.")); return; }
         Lumistones.Session session = plugin.session(player, source, scroll);
-        DialogBase base = base(source == null ? "Warp Scroll" : source.name(), "Choose a waystone you have visited and activated. Stay still during the teleport warmup.");
+        DialogBase base = base(source == null ? "Warp Scroll" : source.name(), "Choose a waystone you have visited and activated." + (plugin.getConfig().getLong("teleport.warmup-seconds") > 0 ? " Stay still during the teleport warmup." : ""));
         List<ActionButton> actions = new ArrayList<>();
         for (Stone target : plugin.stones.values().stream().sorted(Comparator.comparing(Stone::name)).toList()) {
-            if (!plugin.known(player, target) || target.location().getWorld() == null || source != null && source.id().equals(target.id())) continue;
+            if (!plugin.known(player, target) || !plugin.worldEnabled(target.location().getWorld()) || source != null && source.id().equals(target.id())) continue;
             if (!plugin.getConfig().getBoolean("teleport.cross-world") && !target.world().equals(player.getWorld().getUID())) continue;
-            actions.add(button(target.name() + " · " + target.location().getWorld().getName() + " · " + plugin.cost(player, target, scroll) + " levels", "/lumistones choose " + session.token() + " " + target.id(), false, Icon.TRAVEL));
+            actions.add(new ActionButton(destinationLabel(plugin.getConfig(), target.name(), target.location().getWorld().getName(), plugin.cost(player, target, scroll)),
+                    new Action("/lumistones choose " + session.token() + " " + target.id(), false), 300, Icon.TRAVEL));
         }
         if (actions.isEmpty()) actions.add(button("No other activated waystones", "/lumistones close", false));
         plugin.showDialog(player, menu(base, actions));
+    }
+    static TextComponent destinationLabel(org.bukkit.configuration.Configuration config, String name, String world, int cost) {
+        String alias = worldAlias(config, world);
+        Component text = Component.text(name + " · ");
+        String sprite = worldSprite(config, world);
+        if (sprite != null) text = text.append(Component.object(ObjectContents.sprite(DialogView.spriteAtlas(), Key.key(sprite))))
+                .append(Component.text(" "));
+        text = text.append(Component.text(alias + " · "));
+        return new TextComponent(name + " · " + alias + " · ", cost, text);
+    }
+    static String worldSprite(org.bukkit.configuration.Configuration config, String world) {
+        var aliases = config.getConfigurationSection("enabled-worlds");
+        Object configured = aliases == null ? null : aliases.getValues(true).get(world + ".sprite");
+        String sprite = configured instanceof String value ? value : switch (world) {
+            case "world" -> "minecraft:item/compass_16";
+            case "world_nether" -> "minecraft:item/nether_star";
+            case "world_the_end" -> "minecraft:item/ender_eye";
+            default -> "";
+        };
+        if (sprite.isBlank()) return null;
+        try { return Key.key(sprite).asString(); }
+        catch (net.kyori.adventure.key.InvalidKeyException exception) { return null; }
+    }
+    static String worldAlias(org.bukkit.configuration.Configuration config, String world) {
+        var aliases = config.getConfigurationSection("enabled-worlds");
+        if (aliases != null) {
+            var values = aliases.getValues(true);
+            Object value = values.get(world + ".name");
+            if (value == null) value = values.get(world); // Support the previous string-only aliases.
+            if (value instanceof String alias && !alias.isBlank()) return alias;
+        }
+        return switch (world) {
+            case "world" -> "Overworld";
+            case "world_nether" -> "Nether";
+            case "world_the_end" -> "The End";
+            default -> world;
+        };
     }
     void manage(Player player, Stone stone) {
         var session = plugin.session(player, stone, false);
@@ -45,6 +87,8 @@ final class Dialogs {
         List<ActionButton> actions = new ArrayList<>(); String prefix = "/lumistones edit " + session.token() + " ";
         actions.add(button("Travel", prefix + "travel", false, Icon.TRAVEL));
         actions.add(button(stone.privateAccess() ? "Allow other players" : "Make private", prefix + "private", false, stone.privateAccess() ? Icon.SHARED : Icon.PRIVATE));
+        if (!stone.owner().equals(new UUID(0, 0)))
+            actions.add(button(stone.ownerHead() ? "Hide owner head" : "Show owner head", prefix + "owner-head", false, Icon.OWNER));
         plugin.showDialog(player, editingMenu(base, actions, prefix));
     }
 }

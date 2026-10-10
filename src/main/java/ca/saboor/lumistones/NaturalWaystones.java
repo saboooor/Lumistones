@@ -43,10 +43,13 @@ final class NaturalWaystones implements Listener {
     }
     void scan(Chunk chunk) {
         World world = chunk.getWorld();
+        if (!plugin.worldEnabled(world)) return;
         List<String> worlds = plugin.getConfig().getStringList("natural-generation.worlds");
         if (!worlds.isEmpty() && !worlds.contains(world.getName())) return;
         for (var structure : chunk.getStructures()) {
-            String type = structure.getStructure().getKey().toString();
+            NamespacedKey structureKey = io.papermc.paper.registry.RegistryAccess.registryAccess().getRegistry(io.papermc.paper.registry.RegistryKey.STRUCTURE).getKey(structure.getStructure());
+            if (structureKey == null) continue;
+            String type = structureKey.toString();
             BoundingBox box = structure.getBoundingBox();
             UUID id = structureId(world.getUID(), type, box);
             if (finished.contains(id.toString())) continue;
