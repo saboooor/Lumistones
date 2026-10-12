@@ -21,11 +21,27 @@ final class DialogView {
     record Action(String command, boolean dynamic) {}
     enum Icon {
         OWNER("item/name_tag"), TRAVEL("item/ender_pearl"), SAVE("item/feather"), RETRIEVE("item/iron_pickaxe"),
-        SHARED("item/emerald"), PRIVATE("item/iron_door"), CLOSE("item/barrier"), INFO("item/paper");
+        SHARED("item/emerald"), PRIVATE("item/iron_door"), CLOSE("item/barrier"), INFO("item/paper"), DIAMOND("item/diamond"), HOME("item/red_bed"), NATURE("item/oak_sapling"), STAR("item/nether_star"),
+        COMPASS("item/compass_16"), MAP("item/map"), SPYGLASS("item/spyglass"),
+        ENDER_EYE("item/ender_eye"), ELYTRA("item/elytra"), FIREWORK("item/firework_rocket"),
+        IRON("item/iron_ingot"), GOLD("item/gold_ingot"), COPPER("item/copper_ingot"),
+        NETHERITE("item/netherite_ingot"), AMETHYST("item/amethyst_shard"), QUARTZ("item/quartz"),
+        COAL("item/coal"), REDSTONE("item/redstone"), LAPIS("item/lapis_lazuli"),
+        SWORD("item/diamond_sword"), AXE("item/diamond_axe"), BOW("item/bow"),
+        TRIDENT("item/trident"), HELMET("item/diamond_helmet"),
+        APPLE("item/apple"), GOLDEN_APPLE("item/golden_apple"), BREAD("item/bread"),
+        CARROT("item/carrot"), WHEAT("item/wheat"), FISHING_ROD("item/fishing_rod"),
+        BUCKET("item/bucket"), WATER_BUCKET("item/water_bucket"), LAVA_BUCKET("item/lava_bucket"),
+        BOOK("item/book"), ENCHANTED_BOOK("item/enchanted_book"), BLAZE_ROD("item/blaze_rod"),
+        SLIME_BALL("item/slime_ball"), BONE("item/bone"), LEATHER("item/leather"),
+        BRICK("item/brick"), HONEY_BOTTLE("item/honey_bottle"), SNOWBALL("item/snowball");
         final String sprite;
         Icon(String sprite) { this.sprite = sprite; }
     }
-    record ActionButton(TextComponent label, Action action, int width, Icon icon) {}
+    record ActionButton(TextComponent label, Action action, int width, Icon icon, String lore, UUID owner, String ownerName) {
+        ActionButton(TextComponent label, Action action, int width, Icon icon, String lore) { this(label, action, width, icon, lore, null, null); }
+        ActionButton(TextComponent label, Action action, int width, Icon icon) { this(label, action, width, icon, "Select this destination to travel to it."); }
+    }
     record MultiActionDialog(DialogBase getBase, List<ActionButton> actions, int columns, ActionButton exit) {}
     static final class DialogBase {
         private final TextComponent title;
@@ -94,16 +110,21 @@ final class DialogView {
     }
     static Component buttonLabel(ActionButton value) {
         Component text = value.label().paperText() == null ? Component.text(value.label().toPlainText()) : value.label().paperText();
-        if (value.label().xpLevels() != null) {
+        if (value.label().xpLevels() != null && value.label().xpLevels() > 0) {
             text = text.append(Component.object(ObjectContents.sprite(spriteAtlas(), Key.key("minecraft:item/experience_bottle"))))
                     .append(Component.text(" " + value.label().xpLevels()));
         }
+        if (value.owner() != null) {
+            text = text.append(Component.text(" · ")).append(Component.object(ObjectContents.playerHead(value.owner()))
+                    .hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(Component.text("Owner: " + value.ownerName()))));
+        }
         if (value.icon() == null) return text;
-        return Component.object(ObjectContents.sprite(spriteAtlas(), Key.key("minecraft:" + value.icon().sprite)))
-                .append(Component.text(" ")).append(text);
+        Component icon = Component.object(ObjectContents.sprite(spriteAtlas(), Key.key("minecraft:" + value.icon().sprite)));
+        if (value.label().toPlainText().isEmpty() && value.label().paperText() == null) return icon;
+        return icon.append(Component.text(" ")).append(text);
     }
     static io.papermc.paper.registry.data.dialog.ActionButton button(ActionButton value) {
         var action = value.action().dynamic() ? DialogAction.commandTemplate(value.action().command()) : DialogAction.staticAction(ClickEvent.runCommand(value.action().command()));
-        return io.papermc.paper.registry.data.dialog.ActionButton.create(buttonLabel(value), null, value.width(), action);
+        return io.papermc.paper.registry.data.dialog.ActionButton.create(buttonLabel(value), Component.text(value.lore()), value.width(), action);
     }
 }

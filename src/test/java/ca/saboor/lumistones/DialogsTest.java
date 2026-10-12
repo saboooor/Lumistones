@@ -14,6 +14,60 @@ import static org.mockito.Mockito.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 class DialogsTest {
+    @Test void freeDestinationsAndCurrentWorldHaveNoExtraDetails() {
+        var config = new org.bukkit.configuration.file.YamlConfiguration();
+        var home = Dialogs.destinationLabel(config, "Home", "world", Cost.FREE, true);
+        assertEquals("Home", home.toPlainText());
+        assertNull(home.xpLevels());
+        assertEquals("Home", BedrockForms.buttonLabel(new ActionButton(home, null, 300, null)));
+        var away = Dialogs.destinationLabel(config, "Home", "world_nether", Cost.FREE, false);
+        assertEquals("Home · Nether", away.toPlainText());
+        assertNull(away.xpLevels());
+        var paid = Dialogs.destinationLabel(config, "Home", "world", new Cost(3, 0), true);
+        assertEquals("Home · 3 XP", BedrockForms.buttonLabel(new ActionButton(paid, null, 300, null)));
+        var money = Dialogs.destinationLabel(config, "Home", "world", new Cost(0, 5), true);
+        assertEquals("Home · 5.0 money", BedrockForms.buttonLabel(new ActionButton(money, null, 300, null)));
+    }
+    @Test void everyManagementButtonSubmitsEditedNameAndPreservesLore() {
+        var view = Dialogs.editingMenu(Dialogs.base("Manage", "Edit"),
+                List.of(Dialogs.button("Travel", "/lumistones edit token travel", false),
+                        Dialogs.button("Private", "/lumistones edit token private", false),
+                        Dialogs.button("Icon", "/lumistones edit token icon", false)), "/lumistones edit token ");
+        for (var button : view.actions()) {
+            assertTrue(button.action().dynamic());
+            assertTrue(BedrockForms.command(button.action(), java.util.Map.of("name", "New home")).endsWith(" New home"));
+            assertFalse(button.lore().isBlank());
+        }
+    }
+    @Test void selectedIconSurvivesOtherEdits() {
+        var id = java.util.UUID.randomUUID();
+        var stone = new Stone(id, id, id, 0, 0, 0, "Home", false).withIcon("DIAMOND");
+        assertEquals(Icon.DIAMOND, stone.named("New home").visibility(true).withOwnerHead(true).withPublicAccess(true).material(org.bukkit.Material.STONE).icon());
+        assertEquals(Icon.TRAVEL, stone.withIcon("unknown").icon());
+    }
+    @Test void travelButtonShowsOwnerHeadAndReadableBedrockOwner() {
+        var owner = java.util.UUID.randomUUID();
+        var button = new ActionButton(new TextComponent("Home"), null, 300, Icon.DIAMOND, "Owner: Alex", owner, "Alex");
+        var label = DialogView.buttonLabel(button);
+        var text = label.children().get(1);
+        var head = assertInstanceOf(ObjectComponent.class, text.children().get(1));
+        assertEquals(owner, assertInstanceOf(net.kyori.adventure.text.object.PlayerHeadObjectContents.class, head.contents()).id());
+        assertEquals("Owner: Alex", net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize((Component) head.hoverEvent().value()));
+        assertEquals("Home · Owner: Alex", BedrockForms.buttonLabel(button));
+    }
+    @Test void iconPickerUsesCompactGridAndIconOnlyLabels() {
+        var id = java.util.UUID.randomUUID();
+        var view = Dialogs.iconMenu(new Stone(id, id, id, 0, 0, 0, "Home", false), "token");
+        assertEquals(14, view.columns());
+        assertEquals(Icon.values().length, view.actions().size());
+        for (var button : view.actions()) {
+            assertEquals(20, button.width());
+            assertEquals("", button.label().toPlainText());
+            assertTrue(DialogView.buttonLabel(button).children().isEmpty());
+            assertFalse(BedrockForms.buttonLabel(button).isBlank());
+            assertTrue(button.lore().contains(button.icon().name().replace('_', ' ')));
+        }
+    }
     @Test void spriteAtlasMatchesMinecraftVersion() {
         assertEquals(Key.key("minecraft:blocks"), DialogView.spriteAtlas("1.21.10"));
         assertEquals(Key.key("minecraft:items"), DialogView.spriteAtlas("1.21.11"));

@@ -239,7 +239,7 @@ The default download version is `1.21.10`. Downloads use Mojang's version manife
 
 ## Body materials and rune overlays
 
-Combine **one waystone item and one block** anywhere in the crafting grid to change its body material. The shapeless recipe consumes one of each and returns one waystone carrying the chosen material. Ordinary untagged items cannot substitute for a waystone. Placement, mining retrieval, and command retrieval preserve the material. Polished andesite remains the default; the actual mining anchor stays a polished tuff wall. To change a placed stone, retrieve it, craft it with the desired block, then place and activate it again.
+To change a placed waystone’s body material, **shift-right-click it with a block in your main hand**. Only the owner or an administrator can change it. This consumes one block in survival; creative players keep their block. Applying the current material consumes nothing. The stone keeps its name, owner, visibility, icon, and activations. Shift-right-click with an empty hand to manage it. Placement, mining retrieval, and command retrieval preserve the material. Polished andesite remains the default; the mining anchor stays a polished tuff wall. Material-changing crafting recipes are no longer available.
 
 Parts with `material-placeholder: body_block` use the stone’s chosen material instead of their fallback `material`. The default body is polished andesite. In Blockbench, preserve `{body_block}` in cube names, such as `pillar {body_block} [block:POLISHED_ANDESITE]`, to keep this substitution when converting.
 

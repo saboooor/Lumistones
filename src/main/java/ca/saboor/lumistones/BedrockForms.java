@@ -45,11 +45,12 @@ final class BedrockForms {
             if (!custom) {
                 StringBuilder content = new StringBuilder();
                 if (dialog.getBase().body() != null) for (var body : dialog.getBase().body()) if (body instanceof PlainMessageBody message) content.append(message.contents().toPlainText()).append('\n');
+                for (ActionButton button : buttons) content.append(buttonLabel(button)).append(": ").append(button.lore()).append('\n');
                 builderClass.getMethod("content", String.class).invoke(builder, content.toString());
                 for (ActionButton button : buttons) builderClass.getMethod("button", String.class).invoke(builder, buttonLabel(button));
             } else {
                 for (Input input : inputs) {
-                    if (input instanceof TextInput text) builderClass.getMethod("input", String.class, String.class, String.class).invoke(builder, text.label().toPlainText(), "", text.initial() == null ? "" : text.initial());
+                    if (input instanceof TextInput text) builderClass.getMethod("input", String.class, String.class, String.class).invoke(builder, text.label().toPlainText() + "\n" + buttons.stream().map(button -> buttonLabel(button) + ": " + button.lore()).collect(java.util.stream.Collectors.joining("\n")), "", text.initial() == null ? "" : text.initial());
                     else if (input instanceof BooleanInput bool) builderClass.getMethod("toggle", String.class, boolean.class).invoke(builder, bool.label().toPlainText(), Boolean.TRUE.equals(bool.initial()));
                     else if (input instanceof NumberRangeInput number) builderClass.getMethod("slider", String.class, float.class, float.class, float.class, float.class).invoke(builder, number.label().toPlainText(), number.start(), number.end(), number.step() == null ? 1f : number.step(), number.initial() == null ? number.start() : number.initial());
                     else throw new IllegalArgumentException("Unsupported form input " + input.getClass().getSimpleName());
@@ -82,7 +83,9 @@ final class BedrockForms {
         }
     }
     static String buttonLabel(ActionButton button) {
-        return button.label().toPlainText() + (button.label().xpLevels() == null ? "" : button.label().xpLevels() + " XP");
+        String label = button.label().toPlainText();
+        if (label.isEmpty() && button.icon() != null) label = button.icon().name().replace('_', ' ');
+        return label + (button.label().xpLevels() == null || button.label().xpLevels() <= 0 ? "" : button.label().xpLevels() + " XP") + (button.ownerName() == null ? "" : " · Owner: " + button.ownerName());
     }
     static String command(Action action, Map<String, String> values) {
         if (action == null) return null;

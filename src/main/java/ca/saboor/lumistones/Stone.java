@@ -5,7 +5,15 @@ import org.bukkit.Material;
 import org.bukkit.Location;
 import java.util.UUID;
 
-record Stone(UUID id, UUID owner, UUID world, int x, int y, int z, String name, boolean privateAccess, Material bodyBlock, int anchorHeight, boolean ownerHead, boolean publicAccess) {
+record Stone(UUID id, UUID owner, UUID world, int x, int y, int z, String name, boolean privateAccess, Material bodyBlock, int anchorHeight, boolean ownerHead, boolean publicAccess, String menuIcon) {
+    Stone(UUID id, UUID owner, UUID world, int x, int y, int z, String name, boolean privateAccess, Material bodyBlock, int anchorHeight, boolean ownerHead, boolean publicAccess) {
+        this(id, owner, world, x, y, z, name, privateAccess, bodyBlock, anchorHeight, ownerHead, publicAccess, "TRAVEL");
+    }
+    DialogView.Icon icon() {
+        try { return DialogView.Icon.valueOf(menuIcon); }
+        catch (IllegalArgumentException | NullPointerException ignored) { return DialogView.Icon.TRAVEL; }
+    }
+    Stone withIcon(String icon) { return new Stone(id, owner, world, x, y, z, name, privateAccess, bodyBlock, anchorHeight, ownerHead, publicAccess, icon); }
     Stone(UUID id, UUID owner, UUID world, int x, int y, int z, String name, boolean privateAccess, Material bodyBlock, int anchorHeight, boolean ownerHead) {
         this(id, owner, world, x, y, z, name, privateAccess, bodyBlock, anchorHeight, ownerHead, false);
     }
@@ -18,10 +26,10 @@ record Stone(UUID id, UUID owner, UUID world, int x, int y, int z, String name, 
     Stone(UUID id, UUID owner, UUID world, int x, int y, int z, String name, boolean privateAccess, Material bodyBlock) {
         this(id, owner, world, x, y, z, name, privateAccess, bodyBlock, 2);
     }
-    Stone material(Material block) { return new Stone(id, owner, world, x, y, z, name, privateAccess, block, anchorHeight, ownerHead, publicAccess); }
-    Stone withOwnerHead(boolean enabled) { return new Stone(id, owner, world, x, y, z, name, privateAccess, bodyBlock, anchorHeight, enabled, publicAccess); }
+    Stone material(Material block) { return new Stone(id, owner, world, x, y, z, name, privateAccess, block, anchorHeight, ownerHead, publicAccess, menuIcon); }
+    Stone withOwnerHead(boolean enabled) { return new Stone(id, owner, world, x, y, z, name, privateAccess, bodyBlock, anchorHeight, enabled, publicAccess, menuIcon); }
     Location location() { return new Location(Bukkit.getWorld(world), x, y, z); }
-    Stone named(String name) { return new Stone(id, owner, world, x, y, z, name, privateAccess, bodyBlock, anchorHeight, ownerHead, publicAccess); }
-    Stone visibility(boolean privateAccess) { return new Stone(id, owner, world, x, y, z, name, privateAccess, bodyBlock, anchorHeight, ownerHead, publicAccess && !privateAccess); }
-    Stone withPublicAccess(boolean enabled) { return new Stone(id, owner, world, x, y, z, name, enabled ? false : privateAccess, bodyBlock, anchorHeight, ownerHead, enabled); }
+    Stone named(String name) { return new Stone(id, owner, world, x, y, z, name, privateAccess, bodyBlock, anchorHeight, ownerHead, publicAccess, menuIcon); }
+    Stone visibility(boolean privateAccess) { return new Stone(id, owner, world, x, y, z, name, privateAccess, bodyBlock, anchorHeight, ownerHead, publicAccess && !privateAccess, menuIcon); }
+    Stone withPublicAccess(boolean enabled) { return new Stone(id, owner, world, x, y, z, name, enabled ? false : privateAccess, bodyBlock, anchorHeight, ownerHead, enabled, menuIcon); }
 }
