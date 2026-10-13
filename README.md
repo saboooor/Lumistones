@@ -22,9 +22,9 @@ OOO
 
 Place it on solid ground with three empty blocks above that ground. New stones receive a random fantasy name. The name/management dialog opens after placement, letting you rename them. Naturally generated stones use the same naming system; existing saved names are preserved. New stones must be at least **64 blocks apart** within the same world; set `minimum-distance-blocks: 0` to disable spacing. Existing stones are not moved by a spacing change.
 
-Right-click a stone to activate it for your player and open the teleport menu. Destination buttons show the world and travel cost. Discoverable stones require every player, including the owner and administrators, to visit and click them before they appear as destinations. Public stones appear for everyone without activation. Private stones can only be activated and used by their owner; other players cannot click or travel to them, even if they activated them earlier. Owners can toggle private access in the manage dialog or with `/lumistones private <id> <true|false>`. Administrators retain management permissions but cannot travel through another player’s private stone. Turning private access off restores access for players who previously activated it.
+Right-click a stone to activate it for your player and open the teleport menu. Destination buttons show the world and travel cost. Local stones are automatically discovered by the player placing them; other players must visit and click them before they appear as destinations. Global stones appear for everyone without activation. Private stones can only be activated and used by their owner; other players cannot click or travel to them, even if they activated them earlier. Owners can toggle private access in the manage dialog or with `/lumistones private <id> <true|false>`. Administrators retain management permissions but cannot travel through another player’s private stone. Turning private access off restores access for players who previously activated it.
 
-Sneak-right-click your stone to rename it, change private access, travel, or retrieve it. `require-sneak-to-manage: false` opens management on a normal click for owners. Administrators can manage anyone's stones. Break the polished tuff wall at the base to retrieve the stone, or use `/lumistones remove <id>`. Only owners and administrators can retrieve stones, and protection plugins can cancel breaking. Mining drops one waystone item at the base; command retrieval adds it to your inventory, dropping overflow nearby. Both remove the stone's discovery records. Replacing it creates a fresh stone.
+Sneak-right-click your stone to rename it, change private access, travel, or retrieve it. `require-sneak-to-manage: false` opens management on a normal click for owners. Administrators can manage anyone's stones. Break the polished tuff wall at the base to retrieve the stone, or use `/lumistones remove <id>`. Only owners and administrators can retrieve stones, and protection plugins can cancel breaking. Mining in survival drops one waystone item at the base; creative-mode breaking removes the stone without dropping an item; command retrieval adds it to your inventory, dropping overflow nearby. Retrieved items retain the stone's identity, owner, name, discoveries, global/private access, body material, anchor height, owner head, and menu icon across restarts. Replacing one restores these settings at its new location without charging the global cost again.
 
 Craft a single-use Warp Scroll using `P` = paper and `E` = ender pearl:
 
@@ -74,7 +74,7 @@ ID/name resolution accepts full UUIDs, unique UUID prefixes, and unique names. A
 | `teleport.cross-world` | `true` | Permit travel between worlds |
 | `teleport.cooldown-seconds` | `5` | Recharge after successful travel |
 | `teleport.warmup-seconds` | `2` | Delay before teleport |
-| `teleport-sound` | `ENTITY_ENDERMAN_TELEPORT` | Bukkit sound name; `NONE` disables it |
+| `teleport-sound` | `ENTITY_ENDERMAN_TELEPORT` | Bukkit sound name; plays at the destination lumistone for nearby players after successful travel; `NONE` disables it |
 | `minimum-distance-blocks` | `64` | Minimum three-dimensional spacing within a world; zero disables |
 | `require-sneak-to-manage` | `true` | Owners must sneak-click to manage |
 | `waystones.private-by-default` | `false` | Newly placed stones allow only their owner to activate/use them |
@@ -86,7 +86,7 @@ ID/name resolution accepts full UUIDs, unique UUID prefixes, and unique names. A
 | `model.custom-model-data` | `0` | Zero uses built-in monument; positive values use your resource-pack item model |
 | `model.item-material` | `AMETHYST_SHARD` | Material for the optional item model |
 
-Enable `waystones.public.enabled` (default `false`) to show **Make public** in the manage menu. `waystones.public.cost` defaults to `{levels: 3, money: 0}` and is charged each time a stone becomes public. Making it discoverable again is free. Public and private access are mutually exclusive. Disabling public waystones restores activation requirements without deleting their saved public setting.
+Enable `waystones.public.enabled` (default `false`) to show **Make global** in the manage menu. `waystones.public.cost` defaults to `{levels: 3, money: 0}` and is charged each time a stone becomes public. **Make local** opens a confirmation that the currency and XP paid for global access will not be refunded; conversion is free. Global and private access are mutually exclusive. Choosing **Make private** for a global stone in management also requires confirmation that global status is removed and its cost is not refunded. Disabling public waystones restores activation requirements without deleting their saved public setting.
 
 Every cost section accepts `levels`, `money`, or both; omitted currencies are free. Money requires [Vault](https://github.com/MilkBowl/VaultAPI/blob/master/src/main/java/net/milkbowl/vault/economy/Economy.java) and an economy provider; unavailable or failed payments block the action. Same-world money costs use `xp.blocks-per-money` (default `1000`) and the money minimum/maximum. For example:
 
@@ -174,7 +174,7 @@ Placement requires solid, nonhazardous support, three clear blocks, a neighborin
 
 Java dialog buttons include native Minecraft sprite icons for travel, saving, retrieval, private access, and closing. These use vanilla item-atlas textures and require no resource pack. Bedrock forms keep readable text labels. Stone names are treated as literal text rather than markup.
 
-Existing saved stones without the new `private` flag become discoverable stones; previous global visibility no longer applies. Existing individual activation records are preserved. Placement alone does not activate a stone: click its wall to activate it.
+Existing saved stones without the new `private` flag become discoverable stones; previous global visibility no longer applies. Existing individual activation records are preserved. Successful placement automatically discovers the stone for the player placing it, before saving and opening management.
 
 ## Editing the waystone model
 
@@ -251,8 +251,10 @@ The waystone management dialog saves the edited name when you press **Close**, w
 
 Management shows **Travel** and **Make private / Allow other players** side by side with narrower buttons. The Retrieve button is removed; mine an anchor to retrieve the waystone. Close still saves the name, and Escape dismisses without saving.
 
-Name labels and rune overlays are hidden until that player activates the stone by visiting and clicking it. The physical monument remains visible. Private access also hides overlays from other players who previously activated it; allowing access restores them. Paper per-player entity visibility handles spawning, activation, joins, chunk/model reloads, and privacy changes; PacketEvents is not required.
+Name labels and rune overlays are hidden until that player discovers the stone by placing it or visiting and clicking it. The physical monument remains visible. Private access also hides overlays from other players who previously activated it; allowing access restores them. Paper per-player entity visibility handles spawning, activation, joins, chunk/model reloads, and privacy changes; PacketEvents is not required.
 
 Waystone names now appear as fixed overlays on all four faces of the part named `rim` (previously `top2`). They follow the rim’s dimensions and rotation and scale down to fit long names. `label.scale: 0.4` sets the maximum text scale; `label.enabled` and `label.view-range` still apply. Names and runes remain hidden until activation. For existing model.yml files, rename the part to `rim` and replace `label.height` with `label.scale`. Single resource-pack model overrides have no native rim and do not create these labels.
 
 `waystones.item-glint: true` adds an enchantment shimmer to Lumistone items without adding an enchantment. Set it to `false` and reload to disable the shimmer on newly crafted, given, recolored, or retrieved items. Existing inventory items keep their current appearance until recolored or placed and retrieved.
+
+Currency amounts in menus use the Vault economy provider’s formatting, with `$` as a fallback.

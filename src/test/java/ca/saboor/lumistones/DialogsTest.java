@@ -26,7 +26,7 @@ class DialogsTest {
         var paid = Dialogs.destinationLabel(config, "Home", "world", new Cost(3, 0), true);
         assertEquals("Home · 3 XP", BedrockForms.buttonLabel(new ActionButton(paid, null, 300, null)));
         var money = Dialogs.destinationLabel(config, "Home", "world", new Cost(0, 5), true);
-        assertEquals("Home · 5.0 money", BedrockForms.buttonLabel(new ActionButton(money, null, 300, null)));
+        assertEquals("Home · $5", BedrockForms.buttonLabel(new ActionButton(money, null, 300, null)));
     }
     @Test void everyManagementButtonSubmitsEditedNameAndPreservesLore() {
         var view = Dialogs.editingMenu(Dialogs.base("Manage", "Edit"),

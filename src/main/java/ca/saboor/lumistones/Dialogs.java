@@ -29,7 +29,7 @@ final class Dialogs {
         if (command.contains("rename")) return "Save the edited waystone name and close this menu. Escape dismisses without saving.";
         if (command.contains("owner-head")) return "Save the name and toggle the owner's head on the waystone model.";
         if (command.contains("private")) return "Save the name and toggle owner-only access. Shared discoverable stones require each player to visit and activate them.";
-        if (command.contains("public")) return "Save the name and toggle public access. Public stones are available to everyone without activation; enabling this charges the configured cost.";
+        if (command.contains("public")) return "Save the name and toggle global access. Global stones are available to everyone without activation; enabling this charges the configured cost.";
         if (command.contains("set-icon")) return "Use this icon beside the waystone in the destination menu.";
         if (command.contains("icon")) return "Save the name and choose the icon shown beside this waystone in the destination menu.";
         if (command.contains("travel")) return "Save the name and open the list of activated destinations. Select a destination to teleport there.";
@@ -117,17 +117,35 @@ final class Dialogs {
     }
     void manage(Player player, Stone stone) {
         var session = plugin.session(player, stone, false);
-        DialogBase base = base("Manage " + stone.name(), "Rename your waystone. Shift-right-click with a block to change its body material. Break either wall block to retrieve it. Every button saves the name. Escape dismisses without saving. Private stones can only be activated and used by their owner. Public stones are available to everyone without activation. Other stones require each player to visit and activate them.");
+        DialogBase base = base("Manage " + stone.name(), "Rename your waystone. Shift-right-click with a block to change its body material. Break either wall block to retrieve it. Every button saves the name. Escape dismisses without saving. Private stones can only be activated and used by their owner. Global stones are available to everyone without activation. Local stones require each player to visit and activate them.");
         base.inputs(List.of(new TextInput("name", new TextComponent("Name")).initial(stone.name()).maxLength(32)));
         List<ActionButton> actions = new ArrayList<>(); String prefix = "/lumistones edit " + session.token() + " ";
         actions.add(button("Change icon", prefix + "icon", false, stone.icon()));
         actions.add(button("Travel", prefix + "travel", false, Icon.TRAVEL));
         actions.add(button(stone.privateAccess() ? "Allow other players" : "Make private", prefix + "private", false, stone.privateAccess() ? Icon.SHARED : Icon.PRIVATE));
         if (plugin.getConfig().getBoolean("waystones.public.enabled", false) || stone.publicAccess())
-            actions.add(button(stone.publicAccess() ? "Make discoverable" : "Make public · " + plugin.publicCost().label(), prefix + "public", false, Icon.SHARED));
+            actions.add(button(stone.publicAccess() ? "Make local" : "Make global · " + plugin.publicCost().label(), prefix + "public", false, Icon.SHARED));
         if (!stone.owner().equals(new UUID(0, 0)))
             actions.add(button(stone.ownerHead() ? "Hide owner head" : "Show owner head", prefix + "owner-head", false, Icon.OWNER));
         plugin.showDialog(player, editingMenu(base, actions, prefix));
+    }
+    void confirmLocal(Player player, Stone stone, String token) {
+        plugin.showDialog(player, localConfirmation(stone, token));
+    }
+    static MultiActionDialog localConfirmation(Stone stone, String token) {
+        String prefix = "/lumistones edit " + token + " ";
+        return new MultiActionDialog(base("Make local?", "Make " + stone.name() + " local? Players will need to discover it to use it. The currency and XP paid to make it global will not be refunded."),
+                List.of(button("Confirm · Make local", prefix + "confirm-local", false, Icon.SHARED)), 1,
+                button("Cancel", prefix + "back", false, Icon.CLOSE));
+    }
+    void confirmPrivate(Player player, Stone stone, String token) {
+        plugin.showDialog(player, privateConfirmation(stone, token));
+    }
+    static MultiActionDialog privateConfirmation(Stone stone, String token) {
+        String prefix = "/lumistones edit " + token + " ";
+        return new MultiActionDialog(base("Make private?", "Make " + stone.name() + " private? This removes its global status and only its owner will be able to use it. The currency and XP paid to make it global will not be refunded."),
+                List.of(button("Confirm · Make private", prefix + "confirm-private", false, Icon.PRIVATE)), 1,
+                button("Cancel", prefix + "back", false, Icon.CLOSE));
     }
     void icons(Player player, Stone stone) {
         var session = plugin.session(player, stone, false);

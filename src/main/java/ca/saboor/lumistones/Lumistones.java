@@ -94,6 +94,16 @@ public final class Lumistones extends JavaPlugin implements Listener, CommandExe
         return value == null ? Material.POLISHED_ANDESITE : bodyMaterial(value);
     }
     private ItemStack bodyItem(Material material) { return colorItem(item("waystone"), material); }
+    ItemStack savedItem(Stone stone) {
+        Set<UUID> players = new HashSet<>();
+        discoveries.forEach((player, ids) -> { if (ids.contains(stone.id())) players.add(player); });
+        ItemStack item = bodyItem(stone.bodyBlock());
+        var meta = item.getItemMeta();
+        meta.getPersistentDataContainer().set(new NamespacedKey(this, "stone_data"), PersistentDataType.STRING,
+                new StoneData(stone, players).encode());
+        meta.displayName(TextStyles.component(stone.name()));
+        item.setItemMeta(meta); return item;
+    }
     private ItemStack colorItem(ItemStack original, Material material) {
         ItemStack result = original.clone(); result.setAmount(1);
         var meta = result.getItemMeta();
@@ -157,14 +167,28 @@ public final class Lumistones extends JavaPlugin implements Listener, CommandExe
         // Placement uses the item's real block event; a mineable wall supports the display model.
         UUID id = UUID.randomUUID();
         Stone stone = new Stone(id, player.getUniqueId(), block.getWorld().getUID(), block.getX(), block.getY(), block.getZ(), WaystoneNames.forStone(id), getConfig().getBoolean("waystones.private-by-default", false), itemBody(event.getItemInHand()), anchorHeight());
+        String encoded = event.getItemInHand().getItemMeta().getPersistentDataContainer().get(new NamespacedKey(this, "stone_data"), PersistentDataType.STRING);
+        StoneData restored;
+        try { restored = encoded == null ? null : StoneData.decode(encoded, block.getWorld().getUID(), block.getX(), block.getY(), block.getZ()); }
+        catch (IllegalArgumentException exception) { event.setCancelled(true); tell(player, "This lumistone has invalid saved data."); return; }
+        if (restored != null) stone = restored.stone();
+        if (stones.containsKey(stone.id()) || placing.containsKey(stone.id())) { event.setCancelled(true); tell(player, "This lumistone is already placed."); return; }
+        if (stone.anchorHeight() > anchorHeight()) {
+            if (block.getY() + stone.anchorHeight() - 1 >= block.getWorld().getMaxHeight()) { event.setCancelled(true); return; }
+            for (int dy = 1; dy < stone.anchorHeight(); dy++) if (!block.getRelative(0, dy, 0).isEmpty()) { event.setCancelled(true); tell(player, "The saved lumistone needs more clear space."); return; }
+        }
+        Stone placedStone = stone;
         placing.put(stone.id(), stone);
         Material placedMaterial = event.getItemInHand().getType();
         Bukkit.getScheduler().runTask(this, () -> {
-            placing.remove(stone.id());
+            placing.remove(placedStone.id());
             if (event.isCancelled() || block.getType() != placedMaterial) return;
-            createAnchors(stone);
-            stones.put(stone.id(), stone); save();
-            model.spawn(stone); if (player.isOnline()) dialogs.manage(player, stone);
+            createAnchors(placedStone);
+            stones.put(placedStone.id(), placedStone);
+            if (restored != null) for (UUID discoverer : restored.discoverers()) discoveries.computeIfAbsent(discoverer, ignored -> new HashSet<>()).add(placedStone.id());
+            discoveries.computeIfAbsent(player.getUniqueId(), ignored -> new HashSet<>()).add(placedStone.id());
+            save();
+            model.spawn(placedStone); if (player.isOnline()) dialogs.manage(player, placedStone);
         });
     }
     private Stone at(Location location) {
@@ -300,7 +324,7 @@ public final class Lumistones extends JavaPlugin implements Listener, CommandExe
             if (TravelPayment.complete(player, destination, cost, paymentScroll)) {
                 cooldowns.put(player.getUniqueId(), System.currentTimeMillis() + Math.max(0, getConfig().getLong("teleport.cooldown-seconds")) * 1000);
                 effects.arrived(player, start, target.name());
-                playTeleportSound(player, destination); tell(player, "Arrived at " + target.name() + ".");
+                playTeleportSound(target.location().add(.5, .5, .5)); tell(player, "Arrived at " + target.name() + ".");
             } else tell(player, "Teleport was cancelled.");
         }, Math.min(1200, Math.max(1, getConfig().getLong("teleport.warmup-seconds") * 20)));
         pending.put(player.getUniqueId(), task);
@@ -347,8 +371,9 @@ public final class Lumistones extends JavaPlugin implements Listener, CommandExe
         // Wait for vanilla to remove the block and every protection listener to finish.
         getServer().getScheduler().runTask(this, () -> {
             if (event.isCancelled() || !event.getBlock().getType().isAir() || !stone.equals(stones.get(stone.id()))) return;
+            ItemStack retrieved = event.getPlayer().getGameMode() == GameMode.CREATIVE ? null : savedItem(stone);
             clearAnchors(stone); remove(stone);
-            event.getBlock().getWorld().dropItemNaturally(event.getBlock().getLocation().add(.5, .5, .5), bodyItem(stone.bodyBlock()));
+            if (retrieved != null) event.getBlock().getWorld().dropItemNaturally(event.getBlock().getLocation().add(.5, .5, .5), retrieved);
         });
     }
     void remove(Stone stone) { model.remove(stone); stones.remove(stone.id()); discoveries.values().forEach(ids -> ids.remove(stone.id())); save(); }
@@ -402,13 +427,27 @@ public final class Lumistones extends JavaPlugin implements Listener, CommandExe
                     if (name.isEmpty()) { tell(player, "Enter a name containing letters or numbers."); return true; }
                     model.remove(stone); Stone updated = stone.named(name); stones.put(stone.id(), updated); model.spawn(updated); save();
                 } else if (args[2].equals("travel")) { dialogs.destinations(player, stone, false); return true; }
-                else if (args[2].equals("private")) { Stone updated = stone.visibility(!stone.privateAccess()); stones.put(stone.id(), updated); model.refresh(updated); save(); }
+                else if (args[2].equals("private")) {
+                    if (stone.publicAccess()) { dialogs.confirmPrivate(player, stone, session.token().toString()); return true; }
+                    Stone updated = stone.visibility(!stone.privateAccess()); stones.put(stone.id(), updated); model.refresh(updated); save();
+                }
+                else if (args[2].equals("confirm-private")) {
+                    Stone updated = stone.visibility(true);
+                    stones.put(stone.id(), updated); model.refresh(updated); save();
+                    dialogs.manage(player, updated); return true;
+                }
                 else if (args[2].equals("public")) {
+                    if (stone.publicAccess()) { dialogs.confirmLocal(player, stone, session.token().toString()); return true; }
                     if (!stone.publicAccess()) {
-                        if (!getConfig().getBoolean("waystones.public.enabled", false)) { tell(player, "Public waystones are disabled."); return true; }
-                        if (!EconomyPayment.charge(player, publicCost())) { tell(player, "You cannot pay the public waystone cost. Check your XP, balance, and economy provider."); return true; }
+                        if (!getConfig().getBoolean("waystones.public.enabled", false)) { tell(player, "Global waystones are disabled."); return true; }
+                        if (!EconomyPayment.charge(player, publicCost())) { tell(player, "You cannot pay the global waystone cost. Check your XP, balance, and economy provider."); return true; }
                     }
                     Stone updated = stone.withPublicAccess(!stone.publicAccess());
+                    stones.put(stone.id(), updated); model.refresh(updated); save();
+                    dialogs.manage(player, updated); return true;
+                }
+                else if (args[2].equals("confirm-local")) {
+                    Stone updated = stone.withPublicAccess(false);
                     stones.put(stone.id(), updated); model.refresh(updated); save();
                     dialogs.manage(player, updated); return true;
                 }
@@ -501,7 +540,7 @@ public final class Lumistones extends JavaPlugin implements Listener, CommandExe
     private void list(CommandSender sender) {
         if (!permission(sender, "lumistones.use")) return;
         for (Stone stone : stones.values().stream().sorted(Comparator.comparing(Stone::name)).toList())
-            if (!(sender instanceof Player player) || known(player, stone)) sender.sendMessage(info(stone.id() + " - " + stone.name() + " (" + (stone.privateAccess() ? "private" : stone.publicAccess() ? "public" : "discoverable") + ")"));
+            if (!(sender instanceof Player player) || known(player, stone)) sender.sendMessage(info(stone.id() + " - " + stone.name() + " (" + (stone.privateAccess() ? "private" : stone.publicAccess() ? "global" : "local") + ")"));
     }
     Stone findStone(String input) {
         List<Stone> matches = stones.values().stream().filter(stone -> stone.id().toString().equalsIgnoreCase(input) || stone.name().equalsIgnoreCase(input)).toList();
@@ -521,22 +560,23 @@ public final class Lumistones extends JavaPlugin implements Listener, CommandExe
         retrieving.add(player.getUniqueId());
         try { Bukkit.getPluginManager().callEvent(event); } finally { retrieving.remove(player.getUniqueId()); }
         if (event.isCancelled()) { tell(player, "You cannot remove a waystone here."); return; }
+        ItemStack retrieved = savedItem(stone);
         clearAnchors(stone); remove(stone);
-        player.getInventory().addItem(bodyItem(stone.bodyBlock())).values().forEach(extra -> player.getWorld().dropItemNaturally(player.getLocation(), extra));
+        player.getInventory().addItem(retrieved).values().forEach(extra -> player.getWorld().dropItemNaturally(player.getLocation(), extra));
     }
     int minimumDistance() { return Math.max(0, getConfig().getInt("minimum-distance-blocks", 64)); }
     boolean tooClose(Location location) {
         return java.util.stream.Stream.concat(stones.values().stream(), placing.values().stream()).anyMatch(stone ->
             TravelRules.tooClose(stone.world(), stone.x(), stone.y(), stone.z(), location.getWorld().getUID(), location.getBlockX(), location.getBlockY(), location.getBlockZ(), minimumDistance()));
     }
-    private void playTeleportSound(Player player, Location destination) {
+    private void playTeleportSound(Location destination) {
         String configured = getConfig().getString("teleport-sound", "ENTITY_ENDERMAN_TELEPORT");
         if (configured == null || configured.isBlank() || configured.equalsIgnoreCase("NONE")) return;
         for (Sound sound : Registry.SOUNDS) {
             NamespacedKey key = Registry.SOUNDS.getKey(sound);
             if (key != null && (key.toString().equalsIgnoreCase(configured) || key.getKey().equalsIgnoreCase(configured)
                     || key.getKey().replace('.', '_').equalsIgnoreCase(configured))) {
-                player.playSound(destination, sound, 1, 1); return;
+                destination.getWorld().playSound(destination, sound, 1, 1); return;
             }
         }
         getLogger().warning("Unknown teleport-sound: " + configured);

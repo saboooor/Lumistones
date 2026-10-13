@@ -14,6 +14,18 @@ final class EconomyPayment {
         if (registration == null) throw new IllegalStateException("No economy provider");
         return economy.getMethod(method, OfflinePlayer.class, double.class).invoke(registration.getProvider(), player, money);
     }
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    static String format(double amount) {
+        try {
+            Class economy = Class.forName("net.milkbowl.vault.economy.Economy");
+            var registration = Bukkit.getServicesManager().getRegistration(economy);
+            if (registration != null) {
+                Object formatted = economy.getMethod("format", double.class).invoke(registration.getProvider(), amount);
+                if (formatted instanceof String text && !text.isBlank()) return text;
+            }
+        } catch (ReflectiveOperationException | RuntimeException ignored) { }
+        return "$" + java.math.BigDecimal.valueOf(amount).stripTrailingZeros().toPlainString();
+    }
     static boolean affordable(Player player, Cost cost) {
         if (player.getLevel() < cost.levels()) return false;
         if (cost.money() == 0) return true;

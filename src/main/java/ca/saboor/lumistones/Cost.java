@@ -18,6 +18,6 @@ record Cost(int levels, double money) {
         return new Cost(config.getInt(path + ".levels", fallback), config.getDouble(path + ".money", 0));
     }
     String label() {
-        return money > 0 ? (levels > 0 ? levels + " XP + " : "") + money + " money" : levels + " XP";
+        return money > 0 ? (levels > 0 ? levels + " XP + " : "") + EconomyPayment.format(money) : levels + " XP";
     }
 }
