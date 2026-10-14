@@ -95,6 +95,24 @@ class BodyInteractionTest {
         verify(held, never()).setAmount(anyInt());
         verify(dialogs).destinations(player, stone, false);
     }
+    @Test void protectedClickDiscoversWithoutEditingOrOpeningManagement() throws Exception {
+        when(player.isSneaking()).thenReturn(true);
+        var inventory = mock(org.bukkit.inventory.PlayerInventory.class);
+        when(player.getInventory()).thenReturn(inventory);
+        when(inventory.getItemInMainHand()).thenReturn(held);
+        doReturn(true).when(plugin).worldEnabled(any());
+        doReturn(true).when(plugin).permission(player, "lumistones.use");
+        doReturn(true).when(plugin).near(player, stone);
+        var dialogs = mock(Dialogs.class);
+        set("dialogs", dialogs);
+        plugin.click(player, stone, false);
+        verify(plugin).activate(player, stone);
+        verify(dialogs).destinations(player, stone, false);
+        verify(dialogs, never()).manage(any(), any());
+        verify(held, never()).setAmount(anyInt());
+        verifyNoInteractions(model);
+        assertEquals(stone, plugin.stones.get(stone.id()));
+    }
     @Test void shiftRightClickWithAirOpensManageInsteadOfChangingBody() throws Exception {
         when(player.isSneaking()).thenReturn(true);
         var inventory = mock(org.bukkit.inventory.PlayerInventory.class);

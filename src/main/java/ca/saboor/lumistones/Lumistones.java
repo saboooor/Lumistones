@@ -230,28 +230,36 @@ public final class Lumistones extends JavaPlugin implements Listener, CommandExe
         if (event.getHand() != EquipmentSlot.HAND || event.getAction() != Action.RIGHT_CLICK_BLOCK && event.getAction() != Action.RIGHT_CLICK_AIR) return;
         Stone stone = event.getClickedBlock() == null ? null : anchorAt(event.getClickedBlock().getLocation());
         if (stone != null) {
-            if (event.useInteractedBlock() == Event.Result.DENY) return;
-            event.setCancelled(true); click(event.getPlayer(), stone);
+            boolean protectedClick = event.useInteractedBlock() == Event.Result.DENY;
+            if (protectedClick && !getConfig().getBoolean("waystones.bypass-claim-protection", true)) return;
+            event.setCancelled(true); click(event.getPlayer(), stone, !protectedClick);
         }
         else if (isItem(event.getItem(), "scroll")) { event.setCancelled(true); openScroll(event.getPlayer()); }
     }
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true) public void entityClick(PlayerInteractEntityEvent event) {
+    @EventHandler(priority = EventPriority.HIGHEST) public void entityClick(PlayerInteractEntityEvent event) {
         if (event.getHand() != EquipmentSlot.HAND) return;
         Stone stone = stones.get(model.stoneId(event.getRightClicked()));
-        if (stone != null) { event.setCancelled(true); click(event.getPlayer(), stone); }
+        if (stone != null) {
+            boolean protectedClick = event.isCancelled();
+            if (protectedClick && !getConfig().getBoolean("waystones.bypass-claim-protection", true)) return;
+            event.setCancelled(true); click(event.getPlayer(), stone, !protectedClick);
+        }
     }
     void click(Player player, Stone stone) {
+        click(player, stone, true);
+    }
+    void click(Player player, Stone stone, boolean allowManagement) {
         if (!worldEnabled(player.getWorld())) { tell(player, "Waystones are disabled in this world."); return; }
         if (!permission(player, "lumistones.use")) return;
         if (!near(player, stone)) return;
         if (!canUse(player, stone)) { tell(player, "This waystone is private to its owner."); return; }
         ItemStack held = player.getInventory().getItemInMainHand();
-        if (player.isSneaking() && held != null && held.getAmount() > 0 && isBlock(held.getType()) && !isAir(held.getType())
+        if (allowManagement && player.isSneaking() && held != null && held.getAmount() > 0 && isBlock(held.getType()) && !isAir(held.getType())
                 && !isItem(held, "waystone") && !isItem(held, "scroll")) {
             changeBody(player, stone, held); return;
         }
         activate(player, stone);
-        if ((!getConfig().getBoolean("require-sneak-to-manage", true) || player.isSneaking()) && owner(player, stone)) dialogs.manage(player, stone); else dialogs.destinations(player, stone, false);
+        if (allowManagement && (!getConfig().getBoolean("require-sneak-to-manage", true) || player.isSneaking()) && owner(player, stone)) dialogs.manage(player, stone); else dialogs.destinations(player, stone, false);
     }
     void changeBody(Player player, Stone stone, ItemStack held) {
         if (!owner(player, stone)) { tell(player, "You do not own this waystone."); return; }

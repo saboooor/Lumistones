@@ -35,6 +35,9 @@ teleport:
   warmup-seconds: 0
 # Private stones can only be activated and used by their owner.
 waystones:
+  # Allow discovery and travel menus when GriefPrevention or another protection
+  # plugin denies clicks. Editing, management, and breaking still respect protection.
+  bypass-claim-protection: true
   # Enchantment shimmer on crafted/given/retrieved Lumistone items.
   item-glint: true
   # Number of stacked breakable wall blocks; 1–16. Applies to new stones.
