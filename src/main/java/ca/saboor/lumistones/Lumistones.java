@@ -414,7 +414,7 @@ public final class Lumistones extends JavaPlugin implements Listener, CommandExe
             } else {
                 Stone stone = stones.get(session.source()); if (stone == null || !owner(player, stone) || !near(player, stone)) return true;
                 // All management actions submit the name as their trailing argument.
-                if (!args[2].equals("rename") && Set.of("travel", "private", "public", "owner-head", "icon").contains(args[2]) && args.length > 3) {
+                if (!args[2].equals("rename") && Set.of("travel", "private", "public", "owner-head", "icon", "discovered-by").contains(args[2]) && args.length > 3) {
                     String name = TravelRules.cleanName(String.join(" ", Arrays.copyOfRange(args, 3, args.length)));
                     if (name.isEmpty()) { tell(player, "Enter a name containing letters or numbers."); return true; }
                     if (!name.equals(stone.name())) {
@@ -422,6 +422,7 @@ public final class Lumistones extends JavaPlugin implements Listener, CommandExe
                     }
                 }
                 if (args[2].equals("icon")) { dialogs.icons(player, stone); return true; }
+                if (args[2].equals("discovered-by")) { dialogs.discoveredBy(player, stone, session.token().toString()); return true; }
                 if (args[2].equals("back")) { dialogs.manage(player, stone); return true; }
                 if (args[2].equals("set-icon") && args.length == 4) {
                     try {

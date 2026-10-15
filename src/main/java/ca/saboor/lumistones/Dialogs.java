@@ -23,6 +23,7 @@ final class Dialogs {
         return new ActionButton(new TextComponent(label), action, 300, icon, description(command));
     }
     static String description(String command) {
+        if (command.contains(" discovered-by")) return "Save the name and see who has discovered this waystone.";
         if (command.contains(" back")) return "Return to waystone management with the selected icon saved.";
         if (command.contains("flightzone") && command.contains("save")) return "Save the plot name, width, and height. Players inside the plot can fly.";
         if (command.contains("remove")) return "Remove this flight plot and its flight permissions.";
@@ -122,12 +123,29 @@ final class Dialogs {
         List<ActionButton> actions = new ArrayList<>(); String prefix = "/lumistones edit " + session.token() + " ";
         actions.add(button("Change icon", prefix + "icon", false, stone.icon()));
         actions.add(button("Travel", prefix + "travel", false, Icon.TRAVEL));
+        actions.add(button("Discovered by", prefix + "discovered-by", false, Icon.OWNER));
         actions.add(button(stone.privateAccess() ? "Allow other players" : "Make private", prefix + "private", false, stone.privateAccess() ? Icon.SHARED : Icon.PRIVATE));
         if (plugin.getConfig().getBoolean("waystones.public.enabled", false) || stone.publicAccess())
             actions.add(button(stone.publicAccess() ? "Make local" : "Make global · " + plugin.publicCost().label(), prefix + "public", false, Icon.SHARED));
         if (!stone.owner().equals(new UUID(0, 0)))
             actions.add(button(stone.ownerHead() ? "Hide owner head" : "Show owner head", prefix + "owner-head", false, Icon.OWNER));
         plugin.showDialog(player, editingMenu(base, actions, prefix));
+    }
+    void discoveredBy(Player player, Stone stone, String token) {
+        List<String> names = new ArrayList<>();
+        plugin.discoveries.forEach((id, stones) -> {
+            if (stones.contains(stone.id())) {
+                String name = org.bukkit.Bukkit.getOfflinePlayer(id).getName();
+                names.add(name == null || name.isBlank() ? id.toString() : name);
+            }
+        });
+        plugin.showDialog(player, discoveryDetails(stone, token, names));
+    }
+    static MultiActionDialog discoveryDetails(Stone stone, String token, List<String> names) {
+        String message = names.isEmpty() ? "No players have discovered this Lumistone yet."
+                : "Discovered by (" + names.size() + "):\n" + String.join("\n", names.stream().sorted(String.CASE_INSENSITIVE_ORDER).toList());
+        return menu(base("Discovered by · " + stone.name(), message),
+                List.of(button("Back", "/lumistones edit " + token + " back", false, Icon.CLOSE)));
     }
     void confirmLocal(Player player, Stone stone, String token) {
         plugin.showDialog(player, localConfirmation(stone, token));

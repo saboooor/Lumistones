@@ -14,6 +14,15 @@ import static org.mockito.Mockito.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 class DialogsTest {
+    @Test void discoveryDetailsListDiscoverersAlphabeticallyAndHandleEmptyRecords() {
+        var id = java.util.UUID.randomUUID();
+        var stone = new Stone(id, id, id, 0, 0, 0, "Home", false);
+        var view = Dialogs.discoveryDetails(stone, "token", List.of("Zoe", "alex", "00000000-0000-0000-0000-000000000001"));
+        assertEquals("Discovered by (3):\n00000000-0000-0000-0000-000000000001\nalex\nZoe", view.getBase().body().getFirst().contents().toPlainText());
+        assertEquals("/lumistones edit token back", view.actions().getFirst().action().command());
+        assertEquals("No players have discovered this Lumistone yet.",
+                Dialogs.discoveryDetails(stone, "token", List.of()).getBase().body().getFirst().contents().toPlainText());
+    }
     @Test void freeDestinationsAndCurrentWorldHaveNoExtraDetails() {
         var config = new org.bukkit.configuration.file.YamlConfiguration();
         var home = Dialogs.destinationLabel(config, "Home", "world", Cost.FREE, true);
