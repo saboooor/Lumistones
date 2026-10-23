@@ -414,12 +414,38 @@ public final class Lumistones extends JavaPlugin implements Listener, CommandExe
             } else {
                 Stone stone = stones.get(session.source()); if (stone == null || !owner(player, stone) || !near(player, stone)) return true;
                 // All management actions submit the name as their trailing argument.
-                if (!args[2].equals("rename") && Set.of("travel", "private", "public", "owner-head", "icon", "discovered-by").contains(args[2]) && args.length > 3) {
+                if (!args[2].equals("rename") && Set.of("travel", "private", "public", "visibility", "owner-head", "icon", "discovered-by").contains(args[2]) && args.length > 3) {
                     String name = TravelRules.cleanName(String.join(" ", Arrays.copyOfRange(args, 3, args.length)));
                     if (name.isEmpty()) { tell(player, "Enter a name containing letters or numbers."); return true; }
                     if (!name.equals(stone.name())) {
                         model.remove(stone); stone = stone.named(name); stones.put(stone.id(), stone); model.spawn(stone); save();
                     }
+                }
+                if (args[2].equals("visibility")) { dialogs.visibility(player, stone, session.token().toString()); return true; }
+                if (Set.of("set-private", "set-public", "set-global").contains(args[2])) {
+                    String choice = args[2];
+                    if ((choice.equals("set-private") && stone.privateAccess())
+                            || (choice.equals("set-public") && !stone.privateAccess() && !stone.publicAccess())
+                            || (choice.equals("set-global") && stone.publicAccess())) {
+                        dialogs.manage(player, stone); return true;
+                    }
+                    if (stone.publicAccess()) {
+                        if (choice.equals("set-private")) dialogs.confirmPrivate(player, stone, session.token().toString());
+                        else dialogs.confirmLocal(player, stone, session.token().toString());
+                        return true;
+                    }
+                    if (choice.equals("set-global")) {
+                        if (!getConfig().getBoolean("waystones.public.enabled", false)) {
+                            tell(player, "Global waystones are disabled."); dialogs.visibility(player, stone, session.token().toString()); return true;
+                        }
+                        if (!EconomyPayment.charge(player, publicCost())) {
+                            tell(player, "You cannot pay the global waystone cost. Check your XP, balance, and economy provider.");
+                            dialogs.visibility(player, stone, session.token().toString()); return true;
+                        }
+                    }
+                    Stone updated = choice.equals("set-global") ? stone.withPublicAccess(true) : stone.visibility(choice.equals("set-private"));
+                    stones.put(stone.id(), updated); model.refresh(updated); save();
+                    dialogs.manage(player, updated); return true;
                 }
                 if (args[2].equals("icon")) { dialogs.icons(player, stone); return true; }
                 if (args[2].equals("discovered-by")) { dialogs.discoveredBy(player, stone, session.token().toString()); return true; }
