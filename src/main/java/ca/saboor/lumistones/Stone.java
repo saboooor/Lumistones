@@ -9,6 +9,12 @@ record Stone(UUID id, UUID owner, UUID world, int x, int y, int z, String name, 
     Stone(UUID id, UUID owner, UUID world, int x, int y, int z, String name, boolean privateAccess, Material bodyBlock, int anchorHeight, boolean ownerHead, boolean publicAccess) {
         this(id, owner, world, x, y, z, name, privateAccess, bodyBlock, anchorHeight, ownerHead, publicAccess, "TRAVEL");
     }
+    DialogView.Sprite customSprite() {
+        if (menuIcon == null || !menuIcon.startsWith("sprite|")) return null;
+        String[] parts = menuIcon.split("\\|", -1);
+        try { return parts.length == 3 ? DialogView.Sprite.parse(parts[1], parts[2]) : null; }
+        catch (IllegalArgumentException ignored) { return null; }
+    }
     DialogView.Icon icon() {
         try { return DialogView.Icon.valueOf(menuIcon); }
         catch (IllegalArgumentException | NullPointerException ignored) { return DialogView.Icon.TRAVEL; }

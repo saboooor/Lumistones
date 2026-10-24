@@ -77,7 +77,7 @@ public final class Lumistones extends JavaPlugin implements Listener, CommandExe
             String root = "stones." + stone.id() + ".";
             data.set(root + "owner", stone.owner().toString()); data.set(root + "world", stone.world().toString());
             data.set(root + "x", stone.x()); data.set(root + "y", stone.y()); data.set(root + "z", stone.z());
-            data.set(root + "menu-icon", stone.icon().name()); data.set(root + "public", stone.publicAccess()); data.set(root + "owner-head", stone.ownerHead()); data.set(root + "anchor-height", stone.anchorHeight()); data.set(root + "body-block", stone.bodyBlock().name()); data.set(root + "name", stone.name()); data.set(root + "private", stone.privateAccess());
+            data.set(root + "menu-icon", stone.customSprite() == null ? stone.icon().name() : stone.customSprite().stored()); data.set(root + "public", stone.publicAccess()); data.set(root + "owner-head", stone.ownerHead()); data.set(root + "anchor-height", stone.anchorHeight()); data.set(root + "body-block", stone.bodyBlock().name()); data.set(root + "name", stone.name()); data.set(root + "private", stone.privateAccess());
         }
         discoveries.forEach((player, ids) -> data.set("discoveries." + player, ids.stream().map(UUID::toString).toList()));
         DataFiles.write(this, getDataFolder().toPath().resolve("stones.yml"), data);
@@ -450,6 +450,23 @@ public final class Lumistones extends JavaPlugin implements Listener, CommandExe
                 if (args[2].equals("icon")) { dialogs.icons(player, stone); return true; }
                 if (args[2].equals("discovered-by")) { dialogs.discoveredBy(player, stone, session.token().toString()); return true; }
                 if (args[2].equals("back")) { dialogs.manage(player, stone); return true; }
+                if (args[2].equals("custom-icon")) {
+                    showDialog(player, Dialogs.customIconMenu(stone, session.token().toString(), null, null)); return true;
+                }
+                if (Set.of("preview-icon", "apply-icon").contains(args[2])) {
+                    try {
+                        if (args.length != 5) throw new IllegalArgumentException("Enter valid atlas and sprite IDs without spaces.");
+                        var sprite = DialogView.Sprite.parse(args[3], args[4]);
+                        if (args[2].equals("preview-icon")) {
+                            showDialog(player, Dialogs.customIconMenu(stone, session.token().toString(), sprite, null));
+                        } else {
+                            Stone updated = stone.withIcon(sprite.stored()); stones.put(stone.id(), updated); save(); dialogs.manage(player, updated);
+                        }
+                    } catch (IllegalArgumentException exception) {
+                        showDialog(player, Dialogs.customIconMenu(stone, session.token().toString(), null, "Invalid atlas or sprite ID. Use namespace:path, for example minecraft:item/diamond."));
+                    }
+                    return true;
+                }
                 if (args[2].equals("set-icon") && args.length == 4) {
                     try {
                         DialogView.Icon icon = DialogView.Icon.valueOf(args[3]);

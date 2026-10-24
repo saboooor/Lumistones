@@ -91,7 +91,7 @@ final class BedrockForms {
         if (action == null) return null;
         String command = action.command();
         if (action.dynamic()) for (var entry : values.entrySet())
-            command = command.replace("$(" + entry.getKey() + ")", TravelRules.cleanName(entry.getValue()));
+            command = command.replace("$(" + entry.getKey() + ")", Set.of("atlas", "sprite").contains(entry.getKey()) ? entry.getValue().trim() : TravelRules.cleanName(entry.getValue()));
         return command;
     }
 

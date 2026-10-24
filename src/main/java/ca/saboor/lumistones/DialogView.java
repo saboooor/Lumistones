@@ -34,13 +34,30 @@ final class DialogView {
         BUCKET("item/bucket"), WATER_BUCKET("item/water_bucket"), LAVA_BUCKET("item/lava_bucket"),
         BOOK("item/book"), ENCHANTED_BOOK("item/enchanted_book"), BLAZE_ROD("item/blaze_rod"),
         SLIME_BALL("item/slime_ball"), BONE("item/bone"), LEATHER("item/leather"),
-        BRICK("item/brick"), HONEY_BOTTLE("item/honey_bottle"), SNOWBALL("item/snowball");
+        BRICK("item/brick"), HONEY_BOTTLE("item/honey_bottle"), SNOWBALL("item/snowball"),
+        CRAFTING_TABLE("block/crafting_table_front"), BARREL("block/barrel_side"),
+        FURNACE("block/furnace_front"), ANVIL("block/anvil"),
+        LANTERN("item/lantern"), ENCHANTING_TABLE("block/enchanting_table_top");
         final String sprite;
         Icon(String sprite) { this.sprite = sprite; }
     }
-    record ActionButton(TextComponent label, Action action, int width, Icon icon, String lore, UUID owner, String ownerName) {
+    record ActionButton(TextComponent label, Action action, int width, Icon icon, String lore, UUID owner, String ownerName, Sprite customSprite) {
+        ActionButton(TextComponent label, Action action, int width, Icon icon, String lore, UUID owner, String ownerName) { this(label, action, width, icon, lore, owner, ownerName, null); }
+        ActionButton withSprite(Sprite sprite) { return new ActionButton(label, action, width, sprite == null ? icon : null, lore, owner, ownerName, sprite); }
         ActionButton(TextComponent label, Action action, int width, Icon icon, String lore) { this(label, action, width, icon, lore, null, null); }
         ActionButton(TextComponent label, Action action, int width, Icon icon) { this(label, action, width, icon, "Select this destination to travel to it."); }
+    }
+    record Sprite(Key atlas, Key texture) {
+        static Sprite parse(String atlas, String texture) {
+            if (atlas.length() > 256 || texture.length() > 256 || atlas.isBlank() || texture.isBlank())
+                throw new IllegalArgumentException("Enter an atlas and sprite ID (up to 256 characters each).");
+            try { return new Sprite(Key.key(atlas), Key.key(texture)); }
+            catch (net.kyori.adventure.key.InvalidKeyException exception) {
+                throw new IllegalArgumentException("Use valid namespace:path IDs.", exception);
+            }
+        }
+        Component component() { return Component.object(ObjectContents.sprite(atlas, texture)); }
+        String stored() { return "sprite|" + atlas.asString() + "|" + texture.asString(); }
     }
     record MultiActionDialog(DialogBase getBase, List<ActionButton> actions, int columns, ActionButton exit) {}
     static final class DialogBase {
@@ -118,8 +135,9 @@ final class DialogView {
             text = text.append(Component.text(" · ")).append(Component.object(ObjectContents.playerHead(value.owner()))
                     .hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(Component.text("Owner: " + value.ownerName()))));
         }
-        if (value.icon() == null) return text;
-        Component icon = Component.object(ObjectContents.sprite(spriteAtlas(), Key.key("minecraft:" + value.icon().sprite)));
+        if (value.icon() == null && value.customSprite() == null) return text;
+        Component icon = value.customSprite() != null ? value.customSprite().component()
+                : Component.object(ObjectContents.sprite(value.icon().sprite.startsWith("block/") ? Key.key("minecraft:blocks") : spriteAtlas(), Key.key("minecraft:" + value.icon().sprite)));
         if (value.label().toPlainText().isEmpty() && value.label().paperText() == null) return icon;
         return icon.append(Component.text(" ")).append(text);
     }

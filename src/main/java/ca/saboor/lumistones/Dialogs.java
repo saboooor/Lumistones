@@ -41,7 +41,7 @@ final class Dialogs {
         return new MultiActionDialog(base, actions, 1, button("Close", "/lumistones close", false, Icon.CLOSE));
     }
     static MultiActionDialog editingMenu(DialogBase base, List<ActionButton> actions, String prefix) {
-        return new MultiActionDialog(base.canCloseWithEscape(true), actions.stream().map(action -> new ActionButton(action.label(), new Action(action.action().command() + " $(name)", true), 150, action.icon(), action.lore())).toList(), 2,
+        return new MultiActionDialog(base.canCloseWithEscape(true), actions.stream().map(action -> new ActionButton(action.label(), new Action(action.action().command() + " $(name)", true), 150, action.icon(), action.lore()).withSprite(action.customSprite())).toList(), 2,
                 button("Close", prefix + "rename $(name)", true, Icon.CLOSE));
     }
     void destinations(Player player, Stone source, boolean scroll) {
@@ -57,7 +57,7 @@ final class Dialogs {
             if (ownerName == null) ownerName = owner.toString();
             Cost cost = plugin.travelCost(player, target, scroll);
             actions.add(new ActionButton(destinationLabel(plugin.getConfig(), target.name(), target.location().getWorld().getName(), cost, target.world().equals(player.getWorld().getUID())),
-                    new Action("/lumistones choose " + session.token() + " " + target.id(), false), 300, target.icon(), "Owner: " + ownerName + ". Select this destination to teleport there." + (cost.levels() > 0 || cost.money() > 0 ? " Travel costs are charged after a successful teleport." : ""), owner, ownerName));
+                    new Action("/lumistones choose " + session.token() + " " + target.id(), false), 300, target.icon(), "Owner: " + ownerName + ". Select this destination to teleport there." + (cost.levels() > 0 || cost.money() > 0 ? " Travel costs are charged after a successful teleport." : ""), owner, ownerName).withSprite(target.customSprite()));
         }
         if (actions.isEmpty()) actions.add(button("No other activated waystones", "/lumistones close", false));
         plugin.showDialog(player, menu(base, actions));
@@ -121,7 +121,7 @@ final class Dialogs {
         DialogBase base = base("Manage " + stone.name(), "Rename your waystone. Shift-right-click with a block to change its body material. Break either wall block to retrieve it. Every button saves the name. Escape dismisses without saving. Private stones can only be activated and used by their owner. Global stones are available to everyone without activation. Public stones require each player to visit and activate them.");
         base.inputs(List.of(new TextInput("name", new TextComponent("Name")).initial(stone.name()).maxLength(32)));
         List<ActionButton> actions = new ArrayList<>(); String prefix = "/lumistones edit " + session.token() + " ";
-        actions.add(button("Change icon", prefix + "icon", false, stone.icon()));
+        actions.add(button("Change icon", prefix + "icon", false, stone.icon()).withSprite(stone.customSprite()));
         actions.add(button("Travel", prefix + "travel", false, Icon.TRAVEL));
         actions.add(button("Discovered by", prefix + "discovered-by", false, Icon.OWNER));
         actions.add(button("Visibility · " + (stone.privateAccess() ? "Private" : stone.publicAccess() ? "Global" : "Public"), prefix + "visibility", false, stone.privateAccess() ? Icon.PRIVATE : Icon.SHARED));
@@ -183,12 +183,29 @@ final class Dialogs {
         plugin.showDialog(player, iconMenu(stone, session.token().toString()));
     }
     static MultiActionDialog iconMenu(Stone stone, String token) {
-        List<ActionButton> actions = Arrays.stream(Icon.values()).map(icon -> new ActionButton(
+        List<ActionButton> actions = new ArrayList<>(Arrays.stream(Icon.values()).map(icon -> new ActionButton(
                 new TextComponent(""), new Action("/lumistones edit " + token + " set-icon " + icon.name(), false), 20, icon,
-                icon.name().replace('_', ' ') + (icon == stone.icon() ? " (selected). " : ". ")
-                        + "Use this icon beside the waystone in the destination menu.")).toList();
+                icon.name().replace('_', ' ') + (stone.customSprite() == null && icon == stone.icon() ? " (selected). " : ". ")
+                        + "Use this icon beside the waystone in the destination menu.")).toList());
+        actions.add(new ActionButton(new TextComponent("Custom"), new Action("/lumistones edit " + token + " custom-icon", false), 50, Icon.INFO, "Define an atlas sprite and preview it before applying."));
         return new MultiActionDialog(base("Waystone icon", "Choose the icon for " + stone.name() + "."), actions, 14,
                 button("Back", "/lumistones edit " + token + " back", false, Icon.CLOSE));
     }
 
+    static MultiActionDialog customIconMenu(Stone stone, String token, Sprite preview, String error) {
+        Sprite current = preview != null ? preview : stone.customSprite();
+        String prefix = "/lumistones edit " + token + " ";
+        DialogBase base = base("Custom waystone icon", error != null ? error :
+                "Enter atlas and sprite IDs. Preview before applying. Missing textures require a matching client resource pack. Java clients display the sprite; Bedrock forms show its ID.");
+        base.inputs(List.of(new TextInput("atlas", new TextComponent("Atlas ID")).maxLength(256)
+                        .initial(current == null ? DialogView.spriteAtlas().asString() : current.atlas().asString()),
+                new TextInput("sprite", new TextComponent("Sprite ID")).maxLength(256)
+                        .initial(current == null ? "minecraft:item/diamond" : current.texture().asString())));
+        List<ActionButton> actions = new ArrayList<>();
+        actions.add(button("Preview", prefix + "preview-icon $(atlas) $(sprite)", true, Icon.SPYGLASS));
+        if (preview != null) actions.add(new ActionButton(new TextComponent("Apply · " + preview.texture().asString()),
+                new Action(prefix + "apply-icon " + preview.atlas().asString() + " " + preview.texture().asString(), false),
+                300, null, "Save this custom sprite as the waystone icon.").withSprite(preview));
+        return new MultiActionDialog(base, actions, 1, button("Back", prefix + "icon", false, Icon.CLOSE));
+    }
 }

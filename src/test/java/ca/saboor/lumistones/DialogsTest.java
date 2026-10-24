@@ -68,14 +68,37 @@ class DialogsTest {
         var id = java.util.UUID.randomUUID();
         var view = Dialogs.iconMenu(new Stone(id, id, id, 0, 0, 0, "Home", false), "token");
         assertEquals(14, view.columns());
-        assertEquals(Icon.values().length, view.actions().size());
-        for (var button : view.actions()) {
+        assertEquals(Icon.values().length + 1, view.actions().size());
+        assertEquals("Custom", view.actions().getLast().label().toPlainText());
+        for (var button : view.actions().subList(0, Icon.values().length)) {
             assertEquals(20, button.width());
             assertEquals("", button.label().toPlainText());
             assertTrue(DialogView.buttonLabel(button).children().isEmpty());
             assertFalse(BedrockForms.buttonLabel(button).isBlank());
             assertTrue(button.lore().contains(button.icon().name().replace('_', ' ')));
         }
+    }
+    @Test void customSpriteRequiresPreviewAndSurvivesStorageAndEdits() {
+        var id = java.util.UUID.randomUUID();
+        var stone = new Stone(id, id, id, 0, 0, 0, "Home", false);
+        var initial = Dialogs.customIconMenu(stone, "token", null, null);
+        assertEquals(1, initial.actions().size());
+        assertTrue(initial.actions().getFirst().action().dynamic());
+        var sprite = Sprite.parse("custom:atlas", "custom:icons/workbench");
+        var preview = Dialogs.customIconMenu(stone, "token", sprite, null);
+        var apply = preview.actions().getLast();
+        assertEquals("/lumistones edit token apply-icon custom:atlas custom:icons/workbench", apply.action().command());
+        assertEquals(sprite, apply.customSprite());
+        assertInstanceOf(ObjectComponent.class, DialogView.buttonLabel(apply));
+        assertEquals("TRAVEL", stone.menuIcon());
+        var updated = stone.withIcon(sprite.stored()).named("Workshop").visibility(true);
+        String encoded = new StoneData(updated, java.util.Set.of()).encode();
+        assertEquals(sprite, StoneData.decode(encoded, id, 0, 0, 0).stone().customSprite());
+        assertThrows(IllegalArgumentException.class, () -> Sprite.parse("minecraft:items", "bad sprite"));
+        assertThrows(IllegalArgumentException.class, () -> Sprite.parse("", "minecraft:item/diamond"));
+        assertNull(stone.withIcon("sprite|invalid|BAD").customSprite());
+        assertEquals("/lumistones edit token preview-icon custom:atlas custom:icons/workbench",
+                BedrockForms.command(initial.actions().getFirst().action(), java.util.Map.of("atlas", "custom:atlas", "sprite", "custom:icons/workbench")));
     }
     @Test void spriteAtlasMatchesMinecraftVersion() {
         assertEquals(Key.key("minecraft:blocks"), DialogView.spriteAtlas("1.21.10"));
