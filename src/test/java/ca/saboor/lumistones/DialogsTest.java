@@ -27,11 +27,15 @@ class DialogsTest {
     @Test void discoveryDetailsListDiscoverersAlphabeticallyAndHandleEmptyRecords() {
         var id = java.util.UUID.randomUUID();
         var stone = new Stone(id, id, id, 0, 0, 0, "Home", false);
-        var view = Dialogs.discoveryDetails(stone, "token", List.of("Zoe", "alex", "00000000-0000-0000-0000-000000000001"));
-        assertEquals("Discovered by (3):\n00000000-0000-0000-0000-000000000001\nalex\nZoe", view.getBase().body().getFirst().contents().toPlainText());
+        var view = Dialogs.discoveryDetails(stone, "token", java.util.Map.of(id, "Zoe", new java.util.UUID(0, 2), "alex", new java.util.UUID(0, 1), "00000000-0000-0000-0000-000000000001"));
+        assertTrue(view.getBase().body().getFirst().contents().toPlainText().startsWith("Discovered by (3):\n00000000-0000-0000-0000-000000000001\nalex\nZoe"));
+        assertEquals(4, view.actions().size());
+        assertEquals("Remove · alex", view.actions().get(2).label().toPlainText());
+        assertEquals("/lumistones edit token forget-player " + new java.util.UUID(0, 2), view.actions().get(2).action().command());
+        assertEquals("/lumistones edit token forget-player " + id, view.actions().getLast().action().command());
         assertEquals("/lumistones edit token back", view.actions().getFirst().action().command());
         assertEquals("No players have discovered this Lumistone yet.",
-                Dialogs.discoveryDetails(stone, "token", List.of()).getBase().body().getFirst().contents().toPlainText());
+                Dialogs.discoveryDetails(stone, "token", java.util.Map.of()).getBase().body().getFirst().contents().toPlainText());
     }
     @Test void freeDestinationsAndCurrentWorldHaveNoExtraDetails() {
         var config = new org.bukkit.configuration.file.YamlConfiguration();

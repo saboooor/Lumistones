@@ -23,6 +23,7 @@ final class Dialogs {
         return new ActionButton(new TextComponent(label), action, 300, icon, description(command));
     }
     static String description(String command) {
+        if (command.contains(" forget-player")) return "Remove this player’s discovery of this Lumistone. They can activate it again by visiting; global stones remain available to everyone.";
         if (command.contains("reset")) return "Reset this Lumistone to defaults and clear its discoveries. Confirmation is required.";
         if (command.contains(" discovered-by")) return "Save the name and see who has discovered this waystone.";
         if (command.contains(" back")) return "Return to waystone management with the selected icon saved.";
@@ -147,20 +148,27 @@ final class Dialogs {
                 1, button("Back", prefix + "back", false, Icon.CLOSE));
     }
     void discoveredBy(Player player, Stone stone, String token) {
-        List<String> names = new ArrayList<>();
+        Map<UUID, String> names = new HashMap<>();
         plugin.discoveries.forEach((id, stones) -> {
             if (stones.contains(stone.id())) {
                 String name = org.bukkit.Bukkit.getOfflinePlayer(id).getName();
-                names.add(name == null || name.isBlank() ? id.toString() : name);
+                names.put(id, name == null || name.isBlank() ? id.toString() : name);
             }
         });
         plugin.showDialog(player, discoveryDetails(stone, token, names));
     }
-    static MultiActionDialog discoveryDetails(Stone stone, String token, List<String> names) {
+    static MultiActionDialog discoveryDetails(Stone stone, String token, Map<UUID, String> names) {
+        var players = names.entrySet().stream()
+                .sorted(Map.Entry.<UUID, String>comparingByValue(String.CASE_INSENSITIVE_ORDER)
+                        .thenComparing(Map.Entry.comparingByKey())).toList();
         String message = names.isEmpty() ? "No players have discovered this Lumistone yet."
-                : "Discovered by (" + names.size() + "):\n" + String.join("\n", names.stream().sorted(String.CASE_INSENSITIVE_ORDER).toList());
-        return menu(base("Discovered by · " + stone.name(), message),
-                List.of(button("Back", "/lumistones edit " + token + " back", false, Icon.CLOSE)));
+                : "Discovered by (" + names.size() + "):\n" + String.join("\n", players.stream().map(Map.Entry::getValue).toList())
+                        + "\nRemove a discovery below. Players can discover this stone again by visiting and activating it. Global stones remain available to everyone.";
+        List<ActionButton> actions = new ArrayList<>();
+        actions.add(button("Back", "/lumistones edit " + token + " back", false, Icon.CLOSE));
+        for (var entry : players) actions.add(button("Remove · " + entry.getValue(),
+                "/lumistones edit " + token + " forget-player " + entry.getKey(), false, Icon.RETRIEVE));
+        return menu(base("Discovered by · " + stone.name(), message), actions);
     }
     static MultiActionDialog resetConfirmation(Stone stone, String token) {
         String prefix = "/lumistones edit " + token + " ";

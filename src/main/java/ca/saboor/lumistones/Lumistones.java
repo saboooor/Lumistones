@@ -471,6 +471,15 @@ public final class Lumistones extends JavaPlugin implements Listener, CommandExe
                     dialogs.manage(player, updated); return true;
                 }
                 if (args[2].equals("icon")) { dialogs.icons(player, stone); return true; }
+                if (args[2].equals("forget-player") && args.length == 4) {
+                    try {
+                        UUID target = UUID.fromString(args[3]);
+                        Set<UUID> known = discoveries.get(target);
+                        if (known != null && known.remove(stone.id())) save();
+                        dialogs.discoveredBy(player, stone, session.token().toString());
+                    } catch (IllegalArgumentException exception) { tell(player, "Invalid player ID."); }
+                    return true;
+                }
                 if (args[2].equals("discovered-by")) { dialogs.discoveredBy(player, stone, session.token().toString()); return true; }
                 if (args[2].equals("back")) { dialogs.manage(player, stone); return true; }
                 if (args[2].equals("custom-icon")) {
