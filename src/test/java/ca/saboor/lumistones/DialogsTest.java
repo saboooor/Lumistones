@@ -14,6 +14,16 @@ import static org.mockito.Mockito.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 class DialogsTest {
+    @Test void resetConfirmationSeparatesConfirmFromCancelAndWarnsAboutDataLoss() {
+        var id = java.util.UUID.randomUUID();
+        var stone = new Stone(id, id, id, 0, 64, 0, "Home", false);
+        var view = Dialogs.resetConfirmation(stone, "confirmation-token");
+        assertEquals("/lumistones edit confirmation-token confirm-reset", view.actions().getFirst().action().command());
+        assertEquals("/lumistones edit confirmation-token back", view.exit().action().command());
+        assertTrue(view.getBase().body().getFirst().contents().toPlainText().contains("All discoveries"));
+        assertTrue(view.getBase().body().getFirst().contents().toPlainText().contains("cannot be undone"));
+    }
+
     @Test void discoveryDetailsListDiscoverersAlphabeticallyAndHandleEmptyRecords() {
         var id = java.util.UUID.randomUUID();
         var stone = new Stone(id, id, id, 0, 0, 0, "Home", false);

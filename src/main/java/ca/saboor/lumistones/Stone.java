@@ -32,6 +32,10 @@ record Stone(UUID id, UUID owner, UUID world, int x, int y, int z, String name, 
     Stone(UUID id, UUID owner, UUID world, int x, int y, int z, String name, boolean privateAccess, Material bodyBlock) {
         this(id, owner, world, x, y, z, name, privateAccess, bodyBlock, 2);
     }
+    Stone reset(boolean defaultPrivate) {
+        return new Stone(id, owner, world, x, y, z, WaystoneNames.forStone(id), defaultPrivate,
+                Material.POLISHED_ANDESITE, anchorHeight, false, false, "TRAVEL");
+    }
     Stone material(Material block) { return new Stone(id, owner, world, x, y, z, name, privateAccess, block, anchorHeight, ownerHead, publicAccess, menuIcon); }
     Stone withOwnerHead(boolean enabled) { return new Stone(id, owner, world, x, y, z, name, privateAccess, bodyBlock, anchorHeight, enabled, publicAccess, menuIcon); }
     Location location() { return new Location(Bukkit.getWorld(world), x, y, z); }

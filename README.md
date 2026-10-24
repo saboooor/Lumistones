@@ -4,7 +4,7 @@ Paper waystones with craftable items, display-entity monuments, per-player disco
 
 ## Install and build
 
-Requires **Paper 1.21.10 and Java 21**. Run `./gradlew build`, put `build/libs/Lumistones-1.0.0.jar` in `plugins/`, and restart. The plugin compiles against Paper API with compileOnly scope; the server supplies it at runtime. Other Minecraft versions have not been tested.
+Requires **Paper 1.21.10 and Java 21**. Run `./gradlew build`, put `build/libs/Lumistones-1.3.0.jar` in `plugins/`, and restart. The plugin compiles against Paper API with compileOnly scope; the server supplies it at runtime. Other Minecraft versions have not been tested. The Gradle wrapper supports running the build with Java 26; compilation and tests use the Java 21 toolchain. If your IDE still reports `Unsupported class file major version 70`, reload the Gradle project and select the project wrapper as its Gradle distribution.
 
 The plugin creates `plugins/Lumistones/config.yml`, `stones.yml`, and `flight-zones.yml`. Back up the two data files alongside your worlds. They contain stone ownership, discovery records, flight areas, and outstanding flight grants. Existing Lumistones stone data stays compatible. New settings fall back to defaults if your existing config lacks them; add the relevant entries from `src/main/resources/config.yml` to customize them.
 

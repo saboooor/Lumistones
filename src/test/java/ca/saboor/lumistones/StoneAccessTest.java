@@ -28,6 +28,22 @@ class StoneAccessTest {
         assertTrue(shared.named("New").material(org.bukkit.Material.BRICKS).withOwnerHead(true).publicAccess());
         assertFalse(shared.visibility(true).publicAccess());
     }
+    @Test void resetRestoresDefaultsAndPreservesIdentityAndPhysicalFootprint() {
+        Stone customized = stone.named("Custom").material(org.bukkit.Material.BRICKS)
+                .withOwnerHead(true).withPublicAccess(true).withIcon("DIAMOND");
+        Stone reset = customized.reset(true);
+        assertEquals(stone.id(), reset.id());
+        assertEquals(stone.owner(), reset.owner());
+        assertEquals(stone.world(), reset.world());
+        assertEquals(stone.x(), reset.x()); assertEquals(stone.y(), reset.y()); assertEquals(stone.z(), reset.z());
+        assertEquals(stone.anchorHeight(), reset.anchorHeight());
+        assertEquals(WaystoneNames.forStone(stone.id()), reset.name());
+        assertEquals(org.bukkit.Material.POLISHED_ANDESITE, reset.bodyBlock());
+        assertEquals(DialogView.Icon.TRAVEL, reset.icon());
+        assertFalse(reset.ownerHead()); assertFalse(reset.publicAccess());
+        assertTrue(reset.privateAccess());
+        assertFalse(customized.reset(false).privateAccess());
+    }
     @Test void ownerHeadIsPerStoneAndSurvivesOtherEdits() {
         assertFalse(stone.ownerHead());
         Stone enabled = stone.withOwnerHead(true).named("Renamed").visibility(true).material(org.bukkit.Material.BRICKS);

@@ -36,7 +36,11 @@ public final class Lumistones extends JavaPlugin implements Listener, CommandExe
     record BlockKey(UUID worldId, int x, int y, int z) {
         static BlockKey from(Block block) { return new BlockKey(block.getWorld().getUID(), block.getX(), block.getY(), block.getZ()); }
     }
-    record Session(UUID token, UUID source, boolean scroll, boolean remote, long expires) {}
+    record Session(UUID token, UUID source, boolean scroll, boolean remote, long expires, boolean resetConfirmation) {
+        Session(UUID token, UUID source, boolean scroll, boolean remote, long expires) {
+            this(token, source, scroll, remote, expires, false);
+        }
+    }
 
     @Override public void onEnable() {
         saveDefaultConfig(); entityKey = new NamespacedKey(this, "stone"); itemKey = new NamespacedKey(this, "item");
@@ -413,6 +417,25 @@ public final class Lumistones extends JavaPlugin implements Listener, CommandExe
                 try { Stone target = stones.get(UUID.fromString(args[2])); if (target != null) travel(player, session, target); } catch (IllegalArgumentException ignored) { tell(player, "Invalid destination."); }
             } else {
                 Stone stone = stones.get(session.source()); if (stone == null || !owner(player, stone) || !near(player, stone)) return true;
+                if (args[2].equals("reset")) {
+                    Session confirmation = new Session(UUID.randomUUID(), stone.id(), false, false,
+                            System.currentTimeMillis() + 120_000, true);
+                    sessions.put(player.getUniqueId(), confirmation);
+                    showDialog(player, Dialogs.resetConfirmation(stone, confirmation.token().toString()));
+                    return true;
+                }
+                if (args[2].equals("confirm-reset")) {
+                    if (!session.resetConfirmation()) return true;
+                    sessions.remove(player.getUniqueId());
+                    Stone updated = stone.reset(getConfig().getBoolean("waystones.private-by-default", false));
+                    model.remove(stone);
+                    stones.put(stone.id(), updated);
+                    discoveries.values().forEach(ids -> ids.remove(updated.id()));
+                    model.spawn(updated); save();
+                    tell(player, "Lumistone reset. Activate it again to use it.");
+                    dialogs.manage(player, updated);
+                    return true;
+                }
                 // All management actions submit the name as their trailing argument.
                 if (!args[2].equals("rename") && Set.of("travel", "private", "public", "visibility", "owner-head", "icon", "discovered-by").contains(args[2]) && args.length > 3) {
                     String name = TravelRules.cleanName(String.join(" ", Arrays.copyOfRange(args, 3, args.length)));
