@@ -69,7 +69,7 @@ ID/name resolution accepts full UUIDs, unique UUID prefixes, and unique names. A
 | `xp.enabled` | `true` | Enable or disable travel costs |
 | `xp.blocks-per-level` | `1000` | Distance per XP level, rounded up |
 | `xp.minimum-cost` / `xp.maximum-cost` | `{levels: 1}` / `{levels: 3}` | Same-world bounds for each currency |
-| `xp.cross-world-cost` | `{levels: 3}` | Flat cross-world cost |
+| `xp.cross-dimension-cost` | `{levels: 3}` | Flat cost for travel between worlds/dimensions |
 | `scroll.enabled` | `true` | Enable/disable scroll recipe and existing scroll usage |
 | `scroll.uses-cost` | `false` | Charge travel costs for scrolls when costs are enabled |
 | `teleport.command-travel` | `false` | Allow menu/command travel from anywhere |
@@ -100,7 +100,7 @@ xp:
   maximum-cost:
     levels: 3
     money: 100
-  cross-world-cost:
+  cross-dimension-cost:
     money: 50
 waystones:
   public:
@@ -260,3 +260,11 @@ Waystone names now appear as fixed overlays on all four faces of the part named 
 `waystones.item-glint: true` adds an enchantment shimmer to Lumistone items without adding an enchantment. Set it to `false` and reload to disable the shimmer on newly crafted, given, recolored, or retrieved items. Existing inventory items keep their current appearance until recolored or placed and retrieved.
 
 Currency amounts in menus use the Vault economy provider’s formatting, with `$` as a fallback.
+
+Destination rows mark global Lumistones with the vanilla globe GUI icon (Global text on Bedrock). Cross-world destinations show their world icon and name after the owner head. `xp.cross-dimension-cost` accepts levels and money; existing `xp.cross-world-cost` and `xp.cross-world-levels` settings remain supported when the new setting is absent. Creative travel and the configured free-scroll rules still apply.
+
+Owners and administrators can open **Manage → Discovered by** and select **Remove · player** to remove that player’s discovery. The list refreshes after removal, and online players immediately lose the stone’s name and rune overlays. They can rediscover it by visiting and activating it again. Global stones remain available to everyone.
+
+Destination menus list your own Lumistones first, followed by other global Lumistones, then other discovered stones. Within the owned group, global stones come first; each group is sorted by name.
+
+When more than 16 destinations are available, the travel menu shows **Own Lumistones**, **Global Lumistones**, and **Others’ Lumistones** buttons. Own includes all your stones; Global includes all global stones, including yours; Others includes discoverable stones owned by other players or naturally generated. Each filtered list has a **Back** button. Lists of 16 or fewer destinations open directly.

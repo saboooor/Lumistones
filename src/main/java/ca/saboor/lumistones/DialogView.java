@@ -13,7 +13,9 @@ import java.util.*;
 
 /** Shared menu description for Paper dialogs and Floodgate forms. */
 final class DialogView {
-    record TextComponent(String toPlainText, Integer xpLevels, Component paperText) {
+    record TextComponent(String toPlainText, Integer xpLevels, Component paperText, TextComponent afterOwner, Component beforeIcon) {
+        TextComponent(String text, Integer xpLevels, Component paperText, TextComponent afterOwner) { this(text, xpLevels, paperText, afterOwner, null); }
+        TextComponent(String text, Integer xpLevels, Component paperText) { this(text, xpLevels, paperText, null); }
         TextComponent(String text) { this(text, null, null); }
         TextComponent(String text, Integer xpLevels) { this(text, xpLevels, null); }
     }
@@ -21,7 +23,7 @@ final class DialogView {
     record Action(String command, boolean dynamic) {}
     enum Icon {
         OWNER("item/name_tag"), TRAVEL("item/ender_pearl"), SAVE("item/feather"), RETRIEVE("item/iron_pickaxe"),
-        SHARED("item/emerald"), PRIVATE("item/iron_door"), CLOSE("item/barrier"), INFO("item/paper"), DIAMOND("item/diamond"), HOME("item/red_bed"), NATURE("item/oak_sapling"), STAR("item/nether_star"),
+        SHARED("item/emerald"), PRIVATE("item/iron_door"), CLOSE("item/barrier"), INFO("item/paper"), DIAMOND("item/diamond"), HOME("item/oak_door"), NATURE("block/oak_sapling"), STAR("item/nether_star"),
         COMPASS("item/compass_16"), MAP("item/map"), SPYGLASS("item/spyglass"),
         ENDER_EYE("item/ender_eye"), ELYTRA("item/elytra"), FIREWORK("item/firework_rocket"),
         IRON("item/iron_ingot"), GOLD("item/gold_ingot"), COPPER("item/copper_ingot"),
@@ -135,11 +137,19 @@ final class DialogView {
             text = text.append(Component.text(" · ")).append(Component.object(ObjectContents.playerHead(value.owner()))
                     .hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(Component.text("Owner: " + value.ownerName()))));
         }
-        if (value.icon() == null && value.customSprite() == null) return text;
+        if (value.label().afterOwner() != null) {
+            var tail = value.label().afterOwner();
+            text = text.append(tail.paperText() == null ? Component.text(tail.toPlainText()) : tail.paperText());
+        }
+        if (value.icon() == null && value.customSprite() == null) return prependLabelIcon(value, text);
         Component icon = value.customSprite() != null ? value.customSprite().component()
                 : Component.object(ObjectContents.sprite(value.icon().sprite.startsWith("block/") ? Key.key("minecraft:blocks") : spriteAtlas(), Key.key("minecraft:" + value.icon().sprite)));
         if (value.label().toPlainText().isEmpty() && value.label().paperText() == null) return icon;
-        return icon.append(Component.text(" ")).append(text);
+        return prependLabelIcon(value, icon.append(Component.text(" ")).append(text));
+    }
+    private static Component prependLabelIcon(ActionButton value, Component text) {
+        return value.label().beforeIcon() == null ? text
+                : value.label().beforeIcon().append(Component.text(" ")).append(text);
     }
     static io.papermc.paper.registry.data.dialog.ActionButton button(ActionButton value) {
         var action = value.action().dynamic() ? DialogAction.commandTemplate(value.action().command()) : DialogAction.staticAction(ClickEvent.runCommand(value.action().command()));

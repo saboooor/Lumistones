@@ -4,6 +4,18 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class TravelRulesTest {
+    @Test void crossDimensionCostsSupportMoneyAndLegacySettings() {
+        var config = new org.bukkit.configuration.file.YamlConfiguration();
+        assertEquals(new Cost(3, 0), Lumistones.crossDimensionCost(config));
+        config.set("xp.cross-world-levels", 7);
+        assertEquals(new Cost(7, 0), Lumistones.crossDimensionCost(config));
+        config.set("xp.cross-world-cost.money", 20);
+        assertEquals(new Cost(0, 20), Lumistones.crossDimensionCost(config));
+        config.set("xp.cross-dimension-cost.levels", 5);
+        config.set("xp.cross-dimension-cost.money", 50);
+        assertEquals(new Cost(5, 50), Lumistones.crossDimensionCost(config));
+    }
+
     @Test void distanceCostsRoundUpAndRespectCaps() {
         assertEquals(1, TravelRules.cost(0, false, 1000, 1, 3, 3));
         assertEquals(1, TravelRules.cost(1000, false, 1000, 1, 3, 3));

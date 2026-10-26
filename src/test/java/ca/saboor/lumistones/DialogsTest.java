@@ -14,6 +14,68 @@ import static org.mockito.Mockito.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 class DialogsTest {
+    @Test void destinationCategoriesLinkToFiltersAndClassifyOwnedGlobalAndOtherStones() {
+        var player = java.util.UUID.randomUUID();
+        var other = java.util.UUID.randomUUID();
+        var own = new Stone(player, player, other, 0, 0, 0, "Own", false);
+        var global = new Stone(other, other, other, 0, 0, 0, "Global", false).withPublicAccess(true);
+        assertTrue(Dialogs.destinationMatches(own, player, "own"));
+        assertFalse(Dialogs.destinationMatches(global, player, "own"));
+        assertTrue(Dialogs.destinationMatches(global, player, "global"));
+        assertTrue(Dialogs.destinationMatches(own.withPublicAccess(true), player, "global"));
+        assertFalse(Dialogs.destinationMatches(global, player, "others"));
+        assertFalse(Dialogs.destinationMatches(own, player, "others"));
+        assertTrue(Dialogs.destinationMatches(global.withPublicAccess(false), player, "others"));
+        var menu = Dialogs.destinationCategories(Dialogs.base("Travel", "Choose"), "token");
+        assertEquals(List.of("own", "global", "others"), menu.actions().stream()
+                .map(button -> button.action().command().replace("/lumistones choose token filter:", "")).toList());
+    }
+
+    @Test void ownedDestinationsSortAboveOtherGlobalStones() {
+        var player = java.util.UUID.randomUUID();
+        var other = java.util.UUID.randomUUID();
+        var own = new Stone(player, player, other, 0, 0, 0, "Z own", false);
+        var global = new Stone(other, other, other, 0, 0, 0, "A global", false).withPublicAccess(true);
+        var local = global.withPublicAccess(false).named("A local");
+        assertEquals(List.of(own, global, local), List.of(local, global, own).stream()
+                .sorted(Dialogs.destinationOrder(player)).toList());
+    }
+
+    @Test void globalDestinationsSortFirstThenByName() {
+        var id = java.util.UUID.randomUUID();
+        var local = new Stone(id, id, id, 0, 0, 0, "A local", false);
+        var globalZ = local.named("Z global").withPublicAccess(true);
+        var globalA = local.named("A global").withPublicAccess(true);
+        assertEquals(List.of(globalA, globalZ, local), List.of(local, globalZ, globalA).stream().sorted(Dialogs.destinationOrder(java.util.UUID.randomUUID())).toList());
+    }
+
+    @Test void homeAndNatureUseExistingFlatSprites() {
+        var home = assertInstanceOf(SpriteObjectContents.class, assertInstanceOf(ObjectComponent.class,
+                DialogView.buttonLabel(new ActionButton(new TextComponent(""), null, 20, Icon.HOME))).contents());
+        assertEquals(Key.key("minecraft:item/oak_door"), home.sprite());
+        var nature = assertInstanceOf(SpriteObjectContents.class, assertInstanceOf(ObjectComponent.class,
+                DialogView.buttonLabel(new ActionButton(new TextComponent(""), null, 20, Icon.NATURE))).contents());
+        assertEquals(Key.key("minecraft:block/oak_sapling"), nature.sprite());
+        assertEquals(Key.key("minecraft:blocks"), nature.atlas());
+    }
+
+    @Test void globalDestinationPlacesWorldAfterOwner() {
+        var id = java.util.UUID.randomUUID();
+        var stone = new Stone(id, id, id, 0, 0, 0, "Home", false).withPublicAccess(true);
+        var label = Dialogs.destinationRow(new org.bukkit.configuration.file.YamlConfiguration(), stone, "world_nether", new Cost(3, 0), false);
+        var button = new ActionButton(label, null, 300, Icon.TRAVEL, "", id, "Alex");
+        assertEquals("Global · Home · 3 XP · Owner: Alex · Nether", BedrockForms.buttonLabel(button));
+        assertEquals(" · Nether", label.afterOwner().toPlainText());
+        var globe = assertInstanceOf(SpriteObjectContents.class,
+                assertInstanceOf(ObjectComponent.class, label.beforeIcon()).contents());
+        assertEquals(Key.key("minecraft:gui"), globe.atlas());
+        assertEquals(Key.key("minecraft:icon/language"), globe.sprite());
+        var rendered = assertInstanceOf(ObjectComponent.class, DialogView.buttonLabel(button));
+        assertEquals(globe, rendered.contents());
+        var stoneIcon = assertInstanceOf(ObjectComponent.class, rendered.children().getLast());
+        assertEquals(Key.key("minecraft:item/ender_pearl"), assertInstanceOf(SpriteObjectContents.class, stoneIcon.contents()).sprite());
+    }
+
     @Test void resetConfirmationSeparatesConfirmFromCancelAndWarnsAboutDataLoss() {
         var id = java.util.UUID.randomUUID();
         var stone = new Stone(id, id, id, 0, 64, 0, "Home", false);

@@ -8,7 +8,8 @@ xp:
     levels: 1
   maximum-cost:
     levels: 3
-  cross-world-cost:
+  # Flat cost when travelling to another world/dimension.
+  cross-dimension-cost:
     levels: 3
 # Only listed world folder names allow waystone placement and use.
 # Each entry also defines its teleport-menu name and sprite.

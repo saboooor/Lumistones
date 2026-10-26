@@ -85,7 +85,7 @@ final class BedrockForms {
     static String buttonLabel(ActionButton button) {
         String label = button.label().toPlainText();
         if (label.isEmpty() && button.icon() != null) label = button.icon().name().replace('_', ' ');
-        return label + (button.label().xpLevels() == null || button.label().xpLevels() <= 0 ? "" : button.label().xpLevels() + " XP") + (button.ownerName() == null ? "" : " · Owner: " + button.ownerName());
+        return label + (button.label().xpLevels() == null || button.label().xpLevels() <= 0 ? "" : button.label().xpLevels() + " XP") + (button.ownerName() == null ? "" : " · Owner: " + button.ownerName()) + (button.label().afterOwner() == null ? "" : button.label().afterOwner().toPlainText());
     }
     static String command(Action action, Map<String, String> values) {
         if (action == null) return null;

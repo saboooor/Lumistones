@@ -47,22 +47,73 @@ final class Dialogs {
                 button("Close", prefix + "rename $(name)", true, Icon.CLOSE));
     }
     void destinations(Player player, Stone source, boolean scroll) {
+        destinations(player, source, scroll, null);
+    }
+    void destinations(Player player, Stone source, boolean scroll, String filter) {
         if (!plugin.worldEnabled(player.getWorld())) { player.sendMessage(plugin.error("Waystones are disabled in this world.")); return; }
         Lumistones.Session session = plugin.session(player, source, scroll);
         DialogBase base = base(source == null ? "Warp Scroll" : source.name(), "Choose a waystone you have visited and activated." + (plugin.getConfig().getLong("teleport.warmup-seconds") > 0 ? " Stay still during the teleport warmup." : ""));
         List<ActionButton> actions = new ArrayList<>();
-        for (Stone target : plugin.stones.values().stream().sorted(Comparator.comparing(Stone::name)).toList()) {
+        List<Stone> available = plugin.stones.values().stream().sorted(destinationOrder(player.getUniqueId()))
+                .filter(target -> plugin.known(player, target) && plugin.worldEnabled(target.location().getWorld()))
+                .filter(target -> source == null || !source.id().equals(target.id()))
+                .filter(target -> plugin.getConfig().getBoolean("teleport.cross-world") || target.world().equals(player.getWorld().getUID())).toList();
+        if (available.size() > 16 && filter == null) {
+            plugin.showDialog(player, destinationCategories(base, session.token().toString()));
+            return;
+        }
+        if (filter != null) actions.add(button("Back", "/lumistones choose " + session.token() + " filter:all", false, Icon.CLOSE));
+        for (Stone target : available) {
+            if (filter != null && !destinationMatches(target, player.getUniqueId(), filter)) continue;
             if (!plugin.known(player, target) || !plugin.worldEnabled(target.location().getWorld()) || source != null && source.id().equals(target.id())) continue;
             if (!plugin.getConfig().getBoolean("teleport.cross-world") && !target.world().equals(player.getWorld().getUID())) continue;
             UUID owner = target.owner().equals(new UUID(0, 0)) ? null : target.owner();
             String ownerName = owner == null ? "Naturally generated" : org.bukkit.Bukkit.getOfflinePlayer(owner).getName();
             if (ownerName == null) ownerName = owner.toString();
             Cost cost = plugin.travelCost(player, target, scroll);
-            actions.add(new ActionButton(destinationLabel(plugin.getConfig(), target.name(), target.location().getWorld().getName(), cost, target.world().equals(player.getWorld().getUID())),
+            actions.add(new ActionButton(destinationRow(plugin.getConfig(), target, target.location().getWorld().getName(), cost, target.world().equals(player.getWorld().getUID())),
                     new Action("/lumistones choose " + session.token() + " " + target.id(), false), 300, target.icon(), "Owner: " + ownerName + ". Select this destination to teleport there." + (cost.levels() > 0 || cost.money() > 0 ? " Travel costs are charged after a successful teleport." : ""), owner, ownerName).withSprite(target.customSprite()));
         }
-        if (actions.isEmpty()) actions.add(button("No other activated waystones", "/lumistones close", false));
+        if (actions.isEmpty() || filter != null && actions.size() == 1) actions.add(button("No destinations available", "/lumistones close", false));
         plugin.showDialog(player, menu(base, actions));
+    }
+    static MultiActionDialog destinationCategories(DialogBase base, String token) {
+        String prefix = "/lumistones choose " + token + " filter:";
+        return menu(base, List.of(button("Own Lumistones", prefix + "own", false, Icon.HOME),
+                button("Global Lumistones", prefix + "global", false, Icon.SHARED),
+                button("Others’ Lumistones", prefix + "others", false, Icon.OWNER)));
+    }
+    static boolean destinationMatches(Stone stone, UUID player, String filter) {
+        return switch (filter) {
+            case "own" -> stone.owner().equals(player);
+            case "global" -> stone.publicAccess();
+            case "others" -> !stone.owner().equals(player) && !stone.publicAccess();
+            default -> false;
+        };
+    }
+    static Comparator<Stone> destinationOrder(UUID player) {
+        return Comparator.comparing((Stone stone) -> !stone.owner().equals(player))
+                .thenComparing(Comparator.comparing(Stone::publicAccess).reversed()).thenComparing(Stone::name);
+    }
+    static TextComponent destinationRow(org.bukkit.configuration.Configuration config, Stone stone, String world, Cost cost, boolean sameWorld) {
+        TextComponent main = destinationLabel(config, stone.name(), world, cost, true);
+        Component text = main.paperText();
+        String plain = main.toPlainText();
+        Component globalIcon = null;
+        if (stone.publicAccess()) {
+            plain = "Global · " + plain;
+            globalIcon = Component.object(ObjectContents.sprite(Key.key("minecraft:gui"), Key.key("minecraft:icon/language")))
+                    .hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(Component.text("Global")));
+        }
+        TextComponent tail = null;
+        if (!sameWorld) {
+            String alias = worldAlias(config, world);
+            Component worldText = Component.text(" · ");
+            String sprite = worldSprite(config, world);
+            if (sprite != null) worldText = worldText.append(Component.object(ObjectContents.sprite(DialogView.spriteAtlas(), Key.key(sprite)))).append(Component.text(" "));
+            tail = new TextComponent(" · " + alias, null, worldText.append(Component.text(alias)));
+        }
+        return new TextComponent(plain, main.xpLevels(), text, tail, globalIcon);
     }
     static TextComponent destinationLabel(org.bukkit.configuration.Configuration config, String name, String world, Cost cost) {
         return destinationLabel(config, name, world, cost, false);

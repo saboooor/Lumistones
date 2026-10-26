@@ -295,10 +295,15 @@ public final class Lumistones extends JavaPlugin implements Listener, CommandExe
         boolean cross = !target.world().equals(player.getWorld().getUID());
         Cost minimum = Cost.read(getConfig(), "xp.minimum-cost", "xp.minimum-levels", 1);
         Cost maximum = Cost.read(getConfig(), "xp.maximum-cost", "xp.maximum-levels", 3);
-        if (cross) return Cost.read(getConfig(), "xp.cross-world-cost", "xp.cross-world-levels", 3);
+        if (cross) return crossDimensionCost(getConfig());
         double distance = player.getLocation().distance(target.location());
         return new Cost(TravelRules.cost(distance, false, getConfig().getDouble("xp.blocks-per-level", 1000), minimum.levels(), maximum.levels(), 0),
                 Math.min(maximum.money(), Math.max(Math.min(minimum.money(), maximum.money()), Math.ceil(distance / Math.max(1, getConfig().getDouble("xp.blocks-per-money", 1000))))));
+    }
+    static Cost crossDimensionCost(org.bukkit.configuration.Configuration config) {
+        return config.contains("xp.cross-dimension-cost", true)
+                ? Cost.read(config, "xp.cross-dimension-cost", null, 3)
+                : Cost.read(config, "xp.cross-world-cost", "xp.cross-world-levels", 3);
     }
     Cost publicCost() { return Cost.read(getConfig(), "waystones.public.cost", null, 0); }
     private Session validSession(Player player, String token) {
@@ -414,6 +419,12 @@ public final class Lumistones extends JavaPlugin implements Listener, CommandExe
         if (args.length >= 3 && (args[0].equals("choose") || args[0].equals("edit"))) {
             Session session = validSession(player, args[1]); if (session == null) { tell(player, "This dialog has expired. Open the waystone again."); return true; }
             if (args[0].equals("choose")) {
+                if (Set.of("filter:all", "filter:own", "filter:global", "filter:others").contains(args[2])) {
+                    if (!permission(player, "lumistones.use") || !validSource(player, session)) return true;
+                    dialogs.destinations(player, stones.get(session.source()), session.scroll(),
+                            args[2].equals("filter:all") ? null : args[2].substring(7));
+                    return true;
+                }
                 try { Stone target = stones.get(UUID.fromString(args[2])); if (target != null) travel(player, session, target); } catch (IllegalArgumentException ignored) { tell(player, "Invalid destination."); }
             } else {
                 Stone stone = stones.get(session.source()); if (stone == null || !owner(player, stone) || !near(player, stone)) return true;
@@ -475,7 +486,11 @@ public final class Lumistones extends JavaPlugin implements Listener, CommandExe
                     try {
                         UUID target = UUID.fromString(args[3]);
                         Set<UUID> known = discoveries.get(target);
-                        if (known != null && known.remove(stone.id())) save();
+                        if (known != null && known.remove(stone.id())) {
+                            save();
+                            model.refresh(stone);
+                            tell(player, "Player removed from this Lumistone’s discoveries.");
+                        }
                         dialogs.discoveredBy(player, stone, session.token().toString());
                     } catch (IllegalArgumentException exception) { tell(player, "Invalid player ID."); }
                     return true;
