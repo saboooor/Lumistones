@@ -298,7 +298,8 @@ public final class Lumistones extends JavaPlugin implements Listener, CommandExe
         }
     }
     boolean canUse(Player player, Stone stone) { return !stone.privateAccess() || stone.owner().equals(player.getUniqueId()); }
-    boolean known(Player player, Stone stone) { return canUse(player, stone) && worldDiscovered(player, stone.world()) && (stone.publicAccess() && getConfig().getBoolean("waystones.public.enabled", false) || discoveries.getOrDefault(player.getUniqueId(), Set.of()).contains(stone.id())); }
+    boolean known(Player player, Stone stone) { return worldDiscovered(player, stone.world()) && listed(player, stone); }
+    boolean listed(Player player, Stone stone) { return canUse(player, stone) && (stone.publicAccess() && getConfig().getBoolean("waystones.public.enabled", false) || discoveries.getOrDefault(player.getUniqueId(), Set.of()).contains(stone.id())); }
     boolean owner(Player player, Stone stone) { return stone.owner().equals(player.getUniqueId()) || permission(player, "lumistones.admin"); }
     boolean near(Player player, Stone stone) { return stone.location().getWorld() == player.getWorld() && player.getLocation().distanceSquared(stone.location().add(.5, .5, .5)) <= 36; }
     Session session(Player player, Stone source, boolean scroll) {
@@ -332,7 +333,7 @@ public final class Lumistones extends JavaPlugin implements Listener, CommandExe
     }
     private void travel(Player player, Session session, Stone target) {
         if (!worldEnabled(player.getWorld()) || !worldEnabled(target.location().getWorld())) { tell(player, "Waystones are disabled in this world."); return; }
-        if (!worldDiscovered(player, target.world())) { tell(player, "Visit the destination world first before travelling there with Lumistones."); return; }
+        if (!worldDiscovered(player, target.world())) { showDialog(player, Dialogs.worldDiscoveryRequired()); return; }
         if (!permission(player, "lumistones.use") || !known(player, target) || !validSource(player, session) || target.id().equals(session.source())) { tell(player, "This travel selection is no longer available."); return; }
         if (pending.containsKey(player.getUniqueId())) { tell(player, "A teleport is already in progress."); return; }
         if (cooldowns.getOrDefault(player.getUniqueId(), 0L) > System.currentTimeMillis()) { tell(player, "Your waystone is still recharging."); return; }

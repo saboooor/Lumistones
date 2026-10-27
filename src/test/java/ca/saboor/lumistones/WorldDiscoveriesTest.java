@@ -61,6 +61,19 @@ class WorldDiscoveriesTest {
         assertFalse(plugin.known(player, target.visibility(true)));
     }
 
+    @Test void unvisitedWorldDestinationsStayListedWithoutBypassingActivationOrPrivacy() {
+        config.set("teleport.require-world-discovery", true);
+        assertFalse(plugin.listed(player, target));
+        stones.put(playerId, Set.of(target.id()));
+        assertTrue(plugin.listed(player, target));
+        assertFalse(plugin.known(player, target));
+        config.set("waystones.public.enabled", true);
+        stones.clear();
+        assertTrue(plugin.listed(player, target.withPublicAccess(true)));
+        when(player.getUniqueId()).thenReturn(UUID.randomUUID());
+        assertFalse(plugin.listed(player, target.visibility(true)));
+    }
+
     @Test void currentWorldIsAlreadyDiscoveredAndOtherWorldsRemainLocked() {
         config.set("teleport.require-world-discovery", true);
         assertTrue(plugin.worldDiscovered(player, homeId));

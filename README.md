@@ -45,8 +45,9 @@ Travel has configurable warmup and cooldown. Movement or damage interrupts warmu
 Set `teleport.require-world-discovery: true` to require each player to visit a world
 before using Lumistones to travel there. Enter it through a portal or another
 non-Lumistones route first. This also restricts global stones, warp scrolls and
-command travel; destinations in unvisited worlds are hidden and travel is checked
-again after warmup. The default is `false`. World visits are recorded on joining,
+command travel; otherwise accessible destinations in unvisited worlds remain listed,
+but selecting one opens a dialog explaining that the world must be discovered first.
+Travel is checked again after warmup. The default is `false`. World visits are recorded on joining,
 changing worlds, and plugin startup for online players, even while the option is
 disabled. They are saved by player/world UUID in `stones.yml` across restarts.
 Visits from before this feature was installed cannot be reconstructed; players
