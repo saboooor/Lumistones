@@ -21,6 +21,7 @@ import java.util.*;
 public final class Lumistones extends JavaPlugin implements Listener, CommandExecutor, TabCompleter {
     final Map<UUID, Stone> stones = new LinkedHashMap<>();
     final Map<UUID, Set<UUID>> discoveries = new HashMap<>();
+    final WorldDiscoveries worldDiscoveries = new WorldDiscoveries();
     private final Map<UUID, Session> sessions = new HashMap<>();
     private final Map<UUID, Long> cooldowns = new HashMap<>();
     private final Map<UUID, BukkitTask> pending = new HashMap<>();
@@ -51,6 +52,7 @@ public final class Lumistones extends JavaPlugin implements Listener, CommandExe
         effects = new WaystoneEffects(this); effects.enable();
         getServer().getPluginManager().registerEvents(this, this);
         Objects.requireNonNull(getCommand("lumistones")).setExecutor(this); getCommand("lumistones").setTabCompleter(this);
+        for (Player player : Bukkit.getOnlinePlayers()) discoverWorld(player);
         for (World world : Bukkit.getWorlds()) for (Chunk chunk : world.getLoadedChunks()) model.reconcile(chunk);
     }
     @Override public void onDisable() {
@@ -73,6 +75,7 @@ public final class Lumistones extends JavaPlugin implements Listener, CommandExe
             Set<UUID> ids = new HashSet<>(); for (String id : data.getStringList("discoveries." + player)) ids.add(UUID.fromString(id));
             discoveries.put(UUID.fromString(player), ids);
         }
+        worldDiscoveries.load(data);
     }
     private void save() {
         if (!dataLoaded) return;
@@ -84,6 +87,7 @@ public final class Lumistones extends JavaPlugin implements Listener, CommandExe
             data.set(root + "menu-icon", stone.customSprite() == null ? stone.icon().name() : stone.customSprite().stored()); data.set(root + "public", stone.publicAccess()); data.set(root + "owner-head", stone.ownerHead()); data.set(root + "anchor-height", stone.anchorHeight()); data.set(root + "body-block", stone.bodyBlock().name()); data.set(root + "name", stone.name()); data.set(root + "private", stone.privateAccess());
         }
         discoveries.forEach((player, ids) -> data.set("discoveries." + player, ids.stream().map(UUID::toString).toList()));
+        worldDiscoveries.save(data);
         DataFiles.write(this, getDataFolder().toPath().resolve("stones.yml"), data);
     }
     private ItemStack item(String type) {
@@ -151,9 +155,19 @@ public final class Lumistones extends JavaPlugin implements Listener, CommandExe
         for (Player player : Bukkit.getOnlinePlayers()) { if (Bukkit.getRecipe(stoneKey) != null) player.discoverRecipe(stoneKey); else player.undiscoverRecipe(stoneKey); if (getConfig().getBoolean("scroll.enabled")) player.discoverRecipe(scrollKey); }
     }
     @EventHandler public void join(PlayerJoinEvent event) {
+        discoverWorld(event.getPlayer());
         model.refresh(event.getPlayer());
         if (Bukkit.getRecipe(new NamespacedKey(this, "waystone")) != null) event.getPlayer().discoverRecipe(new NamespacedKey(this, "waystone"));
         if (getConfig().getBoolean("scroll.enabled")) event.getPlayer().discoverRecipe(new NamespacedKey(this, "scroll"));
+    }
+    @EventHandler public void changedWorld(PlayerChangedWorldEvent event) { discoverWorld(event.getPlayer()); }
+    void discoverWorld(Player player) {
+        // Track even while the requirement is disabled, so enabling it preserves visits.
+        if (worldDiscoveries.visit(player.getUniqueId(), player.getWorld().getUID())) save();
+    }
+    boolean worldDiscovered(Player player, UUID world) {
+        return !getConfig().getBoolean("teleport.require-world-discovery", false)
+                || player.getWorld().getUID().equals(world) || worldDiscoveries.visited(player.getUniqueId(), world);
     }
     static boolean worldEnabled(org.bukkit.configuration.Configuration config, String world) {
         var worlds = config.getConfigurationSection("enabled-worlds");
@@ -284,7 +298,7 @@ public final class Lumistones extends JavaPlugin implements Listener, CommandExe
         }
     }
     boolean canUse(Player player, Stone stone) { return !stone.privateAccess() || stone.owner().equals(player.getUniqueId()); }
-    boolean known(Player player, Stone stone) { return canUse(player, stone) && (stone.publicAccess() && getConfig().getBoolean("waystones.public.enabled", false) || discoveries.getOrDefault(player.getUniqueId(), Set.of()).contains(stone.id())); }
+    boolean known(Player player, Stone stone) { return canUse(player, stone) && worldDiscovered(player, stone.world()) && (stone.publicAccess() && getConfig().getBoolean("waystones.public.enabled", false) || discoveries.getOrDefault(player.getUniqueId(), Set.of()).contains(stone.id())); }
     boolean owner(Player player, Stone stone) { return stone.owner().equals(player.getUniqueId()) || permission(player, "lumistones.admin"); }
     boolean near(Player player, Stone stone) { return stone.location().getWorld() == player.getWorld() && player.getLocation().distanceSquared(stone.location().add(.5, .5, .5)) <= 36; }
     Session session(Player player, Stone source, boolean scroll) {
@@ -318,6 +332,7 @@ public final class Lumistones extends JavaPlugin implements Listener, CommandExe
     }
     private void travel(Player player, Session session, Stone target) {
         if (!worldEnabled(player.getWorld()) || !worldEnabled(target.location().getWorld())) { tell(player, "Waystones are disabled in this world."); return; }
+        if (!worldDiscovered(player, target.world())) { tell(player, "Visit the destination world first before travelling there with Lumistones."); return; }
         if (!permission(player, "lumistones.use") || !known(player, target) || !validSource(player, session) || target.id().equals(session.source())) { tell(player, "This travel selection is no longer available."); return; }
         if (pending.containsKey(player.getUniqueId())) { tell(player, "A teleport is already in progress."); return; }
         if (cooldowns.getOrDefault(player.getUniqueId(), 0L) > System.currentTimeMillis()) { tell(player, "Your waystone is still recharging."); return; }
@@ -684,3 +699,4 @@ public final class Lumistones extends JavaPlugin implements Listener, CommandExe
     StoneModel models() { return model; }
     private void tell(Player player, String message) { player.sendMessage(info(message)); }
 }
+

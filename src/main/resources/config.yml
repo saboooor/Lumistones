@@ -32,6 +32,9 @@ teleport:
   # Enable /lumistones and /lumistones tp travel from anywhere.
   command-travel: false
   cross-world: true
+  # Require each player to enter a world once before travelling there, even to global stones.
+  # Visits are saved across restarts and tracked even while this option is false.
+  require-world-discovery: false
   cooldown-seconds: 0
   warmup-seconds: 0
 # Private stones can only be activated and used by their owner.
@@ -104,3 +107,4 @@ flight-zone:
 give-amount: 1
 messages:
   prefix: '&d[Lumistones] &7'
+

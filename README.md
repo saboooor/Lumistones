@@ -42,6 +42,18 @@ Command travel is disabled by default: click a waystone or use a scroll to trave
 
 Travel has configurable warmup and cooldown. Movement or damage interrupts warmup. Mounted/gliding players cannot travel. A destination needs an empty two-block-high landing area, solid non-hazardous ground within three blocks, and space inside the world border. Missing worlds, blocked landings, and cancelled Bukkit teleport events do not charge XP or consume scrolls.
 
+Set `teleport.require-world-discovery: true` to require each player to visit a world
+before using Lumistones to travel there. Enter it through a portal or another
+non-Lumistones route first. This also restricts global stones, warp scrolls and
+command travel; destinations in unvisited worlds are hidden and travel is checked
+again after warmup. The default is `false`. World visits are recorded on joining,
+changing worlds, and plugin startup for online players, even while the option is
+disabled. They are saved by player/world UUID in `stones.yml` across restarts.
+Visits from before this feature was installed cannot be reconstructed; players
+must revisit those worlds. Moving or removing a stone does not alter world visits.
+World discovery does not replace the existing stone activation, privacy or
+enabled-world rules, and administrators follow the same discovery requirement.
+
 ## Commands and permissions
 
 Aliases: `/lumistone`, `/ls`.
@@ -74,6 +86,7 @@ ID/name resolution accepts full UUIDs, unique UUID prefixes, and unique names. A
 | `scroll.uses-cost` | `false` | Charge travel costs for scrolls when costs are enabled |
 | `teleport.command-travel` | `false` | Allow menu/command travel from anywhere |
 | `teleport.cross-world` | `true` | Permit travel between worlds |
+| `teleport.require-world-discovery` | `false` | Require a prior visit to each destination world, including for global stones |
 | `teleport.cooldown-seconds` | `5` | Recharge after successful travel |
 | `teleport.warmup-seconds` | `2` | Delay before teleport |
 | `teleport-sound` | `ENTITY_ENDERMAN_TELEPORT` | Bukkit sound name; plays at the destination lumistone for nearby players after successful travel; `NONE` disables it |
@@ -268,3 +281,4 @@ Owners and administrators can open **Manage → Discovered by** and select **Rem
 Destination menus list your own Lumistones first, followed by other global Lumistones, then other discovered stones. Within the owned group, global stones come first; each group is sorted by name.
 
 When more than 16 destinations are available, the travel menu shows **Own Lumistones**, **Global Lumistones**, and **Others’ Lumistones** buttons. Own includes all your stones; Global includes all global stones, including yours; Others includes discoverable stones owned by other players or naturally generated. Each filtered list has a **Back** button. Lists of 16 or fewer destinations open directly.
+

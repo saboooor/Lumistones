@@ -13,6 +13,7 @@ class StoneAccessTest {
     private final Map<UUID, Set<UUID>> discoveries = new HashMap<>();
     private final Stone stone = new Stone(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), 0, 64, 0, "Home", false);
     @BeforeEach void setup() throws Exception {
+        doReturn(new org.bukkit.configuration.file.YamlConfiguration()).when(plugin).getConfig();
         when(player.getUniqueId()).thenReturn(visitor);
         var field = Lumistones.class.getDeclaredField("discoveries"); field.setAccessible(true); field.set(plugin, discoveries);
     }
@@ -86,3 +87,4 @@ class StoneAccessTest {
         assertTrue(plugin.known(player, restricted));
     }
 }
+
